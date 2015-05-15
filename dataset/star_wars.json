@@ -3,7 +3,6 @@
   "characters": [ "Vader", "Leia", "R2-D2", "C-3PO", "Obi-Wan", "Luke", "Han", "Chewie", "Jabba", "Greedo", "Lando", "Yoda", "Boba Fett", "Emperor"],
   "character_weights": [ { "id": 0, "weight": 4}, { "id": 8, "weight": 10 } ],
   "steps": 200,
-  "sessions": 93,
   "locations": [ "Dagobath", "Death Star", "Hoth", "Yavin", "Cloud City", "Endor", "Tatooine", "Other" ],
   "sessions": [
 	{
