@@ -31,8 +31,27 @@
 
 		load_json("dataset/alice_in_wonderland.json", function(dataset) {
 			var annotateDataset = function (dataset) {
+				var levels = [0, dataset.sessions[0].end];
+ 				dataset.sessions[0].level = 1;
+ 				for(var i = 1; i < dataset.sessions.length; i++){
+					j = 1;
+					var inserted = 0;
+					while(j < levels.length && inserted == 0){
+						if(dataset.sessions[i].start > levels[j]){
+							dataset.sessions[i].level = j;
+							inserted = 1;
+							levels[j] = dataset.sessions[i].end;
+						}
+						else j++;
+					}
+					if(inserted == 0){
+						dataset.sessions[i].level = j;
+						levels.push(dataset.sessions[i].end);
+					}
+				}
+				console.log(levels.length);
 				return dataset;
-			};
+ 			};
 
 			var plotDataset = function(dataset) {
 				// Define drawing parameters
