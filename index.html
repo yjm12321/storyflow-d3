@@ -7,7 +7,31 @@
 </head>
 <body>
 	<script type="text/javascript">
-		// D3 code goes here (at least for the beginning)
+		// http://stackoverflow.com/questions/9838812/how-can-i-open-a-json-file-in-javascript-without-jquery
+		function load_json(path, success, error)
+		{
+			var xhr = new XMLHttpRequest();
+
+			xhr.onreadystatechange = function()
+			{
+				if (xhr.readyState === XMLHttpRequest.DONE) {
+					if (xhr.status === 200) {
+						if (success)
+							success(JSON.parse(xhr.responseText));
+					} else {
+						if (error)
+							error(xhr);
+					}
+				}
+			};
+
+			xhr.open("GET", path, true);
+			xhr.send();
+		}
+
+		load_json("dataset/star_wars.json", function(dataset) {
+			
+		}, null);
 	</script>
 </body>
 </html>
