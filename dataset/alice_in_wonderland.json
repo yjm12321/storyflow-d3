@@ -1,0 +1,37 @@
+{
+  "name": "Alice in Wonderland",
+  "characters": [ "Sister", "Alice", "White Rabbit" ],
+  "steps": 222,
+  "sessions": [
+	{
+	  "start": 0,
+	  "end": 4,
+	  "members": [1, 2]
+	},
+	{
+	  "start": 4,
+	  "end": 4,
+	  "members": [3]
+	},
+	{
+	  "start": 5,
+	  "end": 10,
+	  "members": [2, 3]
+	},
+	{
+	  "start":5,
+	  "end": 222,
+	  "members": [1]
+	},
+	{
+	  "start": 11,
+	  "end": 32,
+	  "members": [3]
+	},
+	{
+	  "start": 11,
+	  "end": 17,
+	  "members": [2]
+	}
+  ]
+}
