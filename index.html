@@ -1,116 +1,287 @@
 <!DOCTYPE html>
-<html>
+<html xmlns="http://www.w3.org/1999/html">
 <head lang="en">
 	<meta charset="UTF-8">
 	<title>StoryFlow: Tracking the Evolution of Stories</title>
-	<script type="text/javascript" src="d3/d3.v3.js"></script>
+	<link rel="stylesheet" type="text/css" href="lib/jquery-ui-themes-1.11.4/themes/flick/jquery-ui.min.css"/>
+	<script type="text/javascript" src="lib/d3.v3.js"></script>
+	<script type="text/javascript" src="lib/jquery-ui-1.11.4/external/jquery/jquery.js"></script>
+	<script type="text/javascript" src="lib/jquery-ui-1.11.4/jquery-ui.min.js"></script>
+	<script type="text/javascript" src="lib/randomColor.js"></script>
 </head>
 <body>
-	<script type="text/javascript">
-		// http://stackoverflow.com/questions/9838812/how-can-i-open-a-json-file-in-javascript-without-jquery
-		function load_json(path, success, error)
-		{
-			var xhr = new XMLHttpRequest();
+<script type="text/javascript">
+	// http://stackoverflow.com/questions/9838812/how-can-i-open-a-json-file-in-javascript-without-jquery
+	function load_json(path, success, error) {
+		var xhr = new XMLHttpRequest();
 
-			xhr.onreadystatechange = function()
-			{
-				if (xhr.readyState === XMLHttpRequest.DONE) {
-					if (xhr.status === 200) {
-						if (success)
-							success(JSON.parse(xhr.responseText));
-					} else {
-						if (error)
-							error(xhr);
-					}
+		xhr.onreadystatechange = function () {
+			if (xhr.readyState === XMLHttpRequest.DONE) {
+				if (xhr.status === 200) {
+					if (success)
+						success(JSON.parse(xhr.responseText));
+				} else {
+					if (error)
+						error(xhr);
 				}
-			};
+			}
+		};
 
-			xhr.open("GET", path, true);
-			xhr.send();
+		xhr.open("GET", path, true);
+		xhr.send();
+	}
+
+	var character_spacing_px = 20;
+	var character_size_px = 21;
+
+	var session_height = 80;
+	var session_vertical_spacing = 30;
+	var session_horizontal_scaling = 20;
+	var session_horizontal_compress = 1;
+	var session_color = "none";
+	var interpolation = "linear";
+	var character_colors = [];
+
+	var annotateDataset = function (dataset) {
+		var levels = [0, dataset.sessions[0].end];
+		dataset.sessions[0].level = 1;
+		for (var i = 1; i < dataset.sessions.length; i++) {
+			j = 1;
+			var inserted = 0;
+			while (j < levels.length && inserted == 0) {
+				if (dataset.sessions[i].start > levels[j]) {
+					dataset.sessions[i].level = j;
+					inserted = 1;
+					levels[j] = dataset.sessions[i].end;
+				}
+				else j++;
+			}
+			if (inserted == 0) {
+				dataset.sessions[i].level = j;
+				levels.push(dataset.sessions[i].end);
+			}
+		}
+		console.log(levels.length);
+		return dataset;
+	};
+
+	var plotDataset = function (dataset) {
+		// Define drawing parameters
+		if(character_colors.length != dataset.characters.length)
+			character_colors = randomColor({count: dataset.characters.length});
+
+		var session_horizontal_offset = 0; // Will be computed from the dataset
+
+		// Create the SVG container
+		d3.select("#canvas").select("svg").remove();
+		var svg_container = d3.select("#canvas").append("svg").attr("width", 10000).attr("height", 10000);
+
+		// Compute the coordinates of the characters
+		for (i = 0; i < dataset.characters.length; ++i) {
+			character_name = dataset.characters[i];
+			character = dataset.characters[i] = {"name": character_name};
+			character.d3 = {"x": 0, "y": (character_size_px + character_spacing_px) * i + character_size_px};
+			character.d3.color = character_colors[i];
 		}
 
-		load_json("dataset/alice_in_wonderland.json", function(dataset) {
-			var annotateDataset = function (dataset) {
-				var levels = [0, dataset.sessions[0].end];
- 				dataset.sessions[0].level = 1;
- 				for(var i = 1; i < dataset.sessions.length; i++){
-					j = 1;
-					var inserted = 0;
-					while(j < levels.length && inserted == 0){
-						if(dataset.sessions[i].start > levels[j]){
-							dataset.sessions[i].level = j;
-							inserted = 1;
-							levels[j] = dataset.sessions[i].end;
-						}
-						else j++;
-					}
-					if(inserted == 0){
-						dataset.sessions[i].level = j;
-						levels.push(dataset.sessions[i].end);
-					}
-				}
-				console.log(levels.length);
-				return dataset;
- 			};
-
-			var plotDataset = function(dataset) {
-				// Define drawing parameters
-				var svg_width = window.innerWidth - 30;
-				var svg_height = window.innerHeight;
-
-				var character_x = 0;
-				var character_spacing_y = 40;
-
-				var session_offset_x = 120;
-				var session_offset_y = -10;
-				var session_scale_x = 20;
-				var session_scale_y = 38;
-				var session_height = 20;
-				var session_single_width = 5;
-
-				// Compute the coordinates of the characters
-				for(i = 0; i < dataset.characters.length; ++i) {
-					character_name = dataset.characters[i];
-
-					dataset.characters[i] = {};
-					dataset.characters[i].name = character_name;
-					dataset.characters[i].d3 = {};
-					dataset.characters[i].d3.x = character_x;
-					dataset.characters[i].d3.y = character_spacing_y * (i + 1);
-				}
-
-				// Compute the coordinates of the session boxes
-				dataset.sessions.forEach(function(session) {
-					session.d3 = {};
-					session.d3.x = session_offset_x + session_scale_x * session.start;
-					session.d3.y = session_offset_y + session_scale_y * session.level;
-
-					if(session.end - session.start == 0)
-						session.d3.width = session_single_width;
-					else
-						session.d3.width = session_scale_x * (session.end - session.start);
+		// Display the characters
+		var characters = svg_container.selectAll("text").data(dataset.characters).enter().append("text")
+				.attr("x", function (d) {
+					return d.d3.x;
+				})
+				.attr("y", function (d) {
+					return d.d3.y;
+				})
+				.text(function (d) {
+					return d.name;
+				})
+				.each(function (d) {
+					d.d3.width = this.getBBox().width;
 				});
 
-				// Create the SVG container
-				var svg_container = d3.select("body").append("svg").attr("width", svg_width).attr("height", svg_height);
+		// Compute the horizontal offset for the sessions
+		dataset.characters.forEach(function (character) {
+			session_horizontal_offset = Math.max(session_horizontal_offset, character.d3.width);
+		});
 
-				// Display the characters
-				var characters = svg_container.selectAll("text").data(dataset.characters).enter().append("text")
-						.attr("x", function(d) { return d.d3.x; })
-						.attr("y", function(d) { return d.d3.y; })
-						.text(function(d) { return d.name; });
+		dataset.characters.forEach(function (character) {
+			character.d3.points = [{"x": session_horizontal_offset, "y": character.d3.y}];
+		});
 
-				// Draw the session boxes
-				var rectangle = svg_container.selectAll("rect").data(dataset.sessions).enter().append("rect")
-						.attr("x", function(d) { return d.d3.x })
-						.attr("y", function(d) { return d.d3.y; })
-						.attr("height", session_height)
-						.attr("width", function(d) { return d.d3.width; })
-						.attr("fill", "black");
-			};
+		// Compute the coordinates of the session boxes
+		dataset.sessions.forEach(function (session) {
+			session.d3 = {};
 
-			plotDataset(annotateDataset(dataset));
-		}, null);
-	</script>
+			session.d3.x = session_horizontal_offset + 20 + (session_horizontal_scaling * session.start) +
+					(((1 - session_horizontal_compress) * (session.end - session.start)));
+			session.d3.y = (session_vertical_spacing + session_height) * (session.level - 1);
+
+			session.d3.height = session_height;
+
+			if(session.start == session.end)
+				session.d3.width = 10;
+			else
+				session.d3.width = session_horizontal_compress * session_horizontal_scaling * (session.end - session.start);
+
+			var member_count = 1;
+
+			session.members.forEach(function (index) {
+				member = dataset.characters[index];
+
+				member.d3.points.push(
+						{
+							"x": session.d3.x,
+							"y": session.d3.y + (member_count * (session.d3.height / (session.members.length + 1)))
+						},
+						{
+							"x": session.d3.x + session.d3.width,
+							"y": session.d3.y + (member_count * (session.d3.height / (session.members.length + 1)))
+						}
+				);
+
+				member_count += 1;
+			});
+		});
+
+		// Draw the session boxes
+		var rectangle = svg_container.selectAll("rect").data(dataset.sessions).enter().append("rect")
+				.attr("x", function (d) {
+					return d.d3.x
+				})
+				.attr("y", function (d) {
+					return d.d3.y;
+				})
+				.attr("height", function (d) {
+					return d.d3.height;
+				})
+				.attr("width", function (d) {
+					return d.d3.width;
+				})
+				.attr("fill", session_color);
+
+		// Draw the story lines
+		dataset.characters.forEach(function (character) {
+			var line_function = d3.svg.line().interpolate(interpolation)
+					.x(function (d) {
+						return d.x;
+					})
+					.y(function (d) {
+						return d.y;
+					});
+
+			var story_lines = svg_container.append("path")
+					.attr("d", line_function(character.d3.points))
+					.attr("fill", "none")
+					.attr("stroke", character.d3.color)
+					.attr("stroke-width", 2);
+		});
+	};
+
+	$(document).ready(function() {
+		$("#dataset").selectmenu({
+			select: function (event, ui) {
+				load_json(ui.item.value, function (dataset) {
+					plotDataset(annotateDataset(dataset));
+				}, null);
+			}
+		});
+
+		$("#interpolation").selectmenu({
+			select: function (event, ui) {
+				interpolation = ui.item.value;
+
+				load_json($("#dataset").val(), function (dataset) {
+					plotDataset(annotateDataset(dataset));
+				}, null);
+			}
+		});
+
+		$("#session-height").slider({
+			min: 0,
+			max: 100,
+			value: 80,
+			slide: function(event, ui) {
+				session_height = ui.value;
+
+				load_json($("#dataset").val(), function (dataset) {
+					plotDataset(annotateDataset(dataset));
+				}, null);
+			}
+		});
+
+
+		$("#session-compress").slider({
+			min: 0,
+			max: 1,
+			value: 1,
+			step: 0.01,
+			slide: function(event, ui) {
+				session_horizontal_compress = ui.value;
+
+				load_json($("#dataset").val(), function (dataset) {
+					plotDataset(annotateDataset(dataset));
+				}, null);
+			}
+		});
+
+		$("#session-box").bind("change", function() {
+			if($(this).is(":checked")) {
+				session_color = "#F0F0F0";
+			} else {
+				session_color = "none";
+			}
+
+			load_json($("#dataset").val(), function (dataset) {
+				plotDataset(annotateDataset(dataset));
+			}, null);
+		});
+	});
+</script>
+
+<div id="controls">
+	<div>
+	<select name="dataset" id="dataset" style="width: 250px">
+		<option value="undefined" selected>Dataset</option>
+		<option value="dataset/alice_in_wonderland.json">Alice in Wonderland</option>
+		<option value="dataset/the_matrix.json">The Matrix</option>
+		<option value="dataset/star_wars.json">Star Wars</option>
+	</select>
+	</div>
+
+	<div>
+	<select name="interpolation" id="interpolation" style="width: 250px">
+		<option value="undefined" selected>Interpolation method</option>
+		<option value="linear">Linear</option>
+		<option value="linear-closed">Linear-closed</option>
+		<option value="step">Step</option>
+		<option value="step-before">Step-before</option>
+		<option value="step-after">Step-after</option>
+		<option value="basis">Basis</option>
+		<option value="basis-open">Basis-open</option>
+		<option value="basis-closed">Basis-closed</option>
+		<option value="bundle">Bundle</option>
+		<option value="cardinal">Cardinal</option>
+		<option value="cardinal-open">Cardinal-open</option>
+		<option value="cardinal-closed">Cardinal-closed</option>
+		<option value="monotone">Monotone</option>
+	</select>
+	</div>
+
+	<div>
+		<label for="session-height">Session height</label>
+		<div id="session-height" ></div>
+	</div>
+
+	<div>
+		<label for="session-compress">Session compress</label>
+		<div id="session-compress" ></div>
+	</div>
+
+	<div>
+		<label for="session-box">Display session boxes</label>
+		<input type="checkbox" id="session-box" name="session-box"/>
+	</div>
+</div>
+<div id="canvas"></div>
 </body>
 </html>
