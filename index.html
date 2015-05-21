@@ -40,6 +40,7 @@
 	var session_horizontal_compress = 1;
 	var session_color = "none";
 	var interpolation = "linear";
+	var session_hide_no_interaction = false;
 	var character_colors = [];
 
 	var annotateDataset = function (dataset) {
@@ -112,8 +113,13 @@
 		dataset.sessions.forEach(function (session) {
 			session.d3 = {};
 
+			if(session_hide_no_interaction && session.members.length == 1) {
+				session.d3.points = [];
+				return;
+			}
+
 			session.d3.x = session_horizontal_offset + 20 + (session_horizontal_scaling * session.start) +
-					(((1 - session_horizontal_compress) * (session.end - session.start)));
+					(((1 - session_horizontal_compress) * session_horizontal_scaling * (session.end - session.start)));
 			session.d3.y = (session_vertical_spacing + session_height) * (session.level - 1);
 
 			session.d3.height = session_height;
@@ -122,6 +128,8 @@
 				session.d3.width = 10;
 			else
 				session.d3.width = session_horizontal_compress * session_horizontal_scaling * (session.end - session.start);
+
+			console.log(session.d3);
 
 			var member_count = 1;
 
@@ -235,6 +243,14 @@
 				plotDataset(annotateDataset(dataset));
 			}, null);
 		});
+
+		$("#session-single-hide").bind("change", function() {
+			session_hide_no_interaction = $(this).is(":checked");
+
+			load_json($("#dataset").val(), function (dataset) {
+				plotDataset(annotateDataset(dataset));
+			}, null);
+		});
 	});
 </script>
 
@@ -280,6 +296,11 @@
 	<div>
 		<label for="session-box">Display session boxes</label>
 		<input type="checkbox" id="session-box" name="session-box"/>
+	</div>
+
+	<div>
+		<label for="session-single-hide">Hide sessions with no interaction</label>
+		<input type="checkbox" id="session-single-hide" name="session-single-hide"/>
 	</div>
 </div>
 <div id="canvas"></div>
