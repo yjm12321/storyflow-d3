@@ -12,7 +12,7 @@
 <body>
 <script type="text/javascript">
 	// http://stackoverflow.com/questions/9838812/how-can-i-open-a-json-file-in-javascript-without-jquery
-	function load_json(path, success, error) {
+	function loadJSON(path, success, error) {
 		var xhr = new XMLHttpRequest();
 
 		xhr.onreadystatechange = function () {
@@ -31,278 +31,228 @@
 		xhr.send();
 	}
 
-	var character_spacing_px = 20;
-	var character_size_px = 21;
+	var annotateDataset = function (dataset, options) {
+		// Keep track of the end time of the last session in each level
+		var levels = [];
 
-	var session_height = 80;
-	var session_vertical_spacing = 30;
-	var session_horizontal_scaling = 20;
-	var session_horizontal_compress = 1;
-	var session_color = "none";
-	var interpolation = "linear";
-	var session_hide_no_interaction = false;
-	var character_colors = [];
+		// Store the sessions which will be removed
+		var sessionsToRemove = [];
 
-	var annotateDataset = function (dataset) {
-		var levels = [0, dataset.sessions[0].end];
-		dataset.sessions[0].level = 1;
-		for (var i = 1; i < dataset.sessions.length; i++) {
-			j = 1;
-			var inserted = 0;
-			while (j < levels.length && inserted == 0) {
-				if (dataset.sessions[i].start > levels[j]) {
-					dataset.sessions[i].level = j;
-					inserted = 1;
-					levels[j] = dataset.sessions[i].end;
+		// Compute the level of each sessions and identify the ones that will be removed
+		dataset.sessions.forEach(function(session) {
+			if(options.sessions.removeNoInteraction == true && session.members.length == 1) {
+				sessionsToRemove.push(session);
+			} else {
+				for (i = 0; i < levels.length && session.d3 == undefined; ++i) {
+					if (levels[i] < session.start) {
+						session.d3 = {"level": i};
+						levels[i] = session.end;
+					}
 				}
-				else j++;
-			}
-			if (inserted == 0) {
-				dataset.sessions[i].level = j;
-				levels.push(dataset.sessions[i].end);
-			}
-		}
-		console.log(levels.length);
-		return dataset;
-	};
 
-	var plotDataset = function (dataset) {
-		// Define drawing parameters
-		if(character_colors.length != dataset.characters.length)
-			character_colors = randomColor({count: dataset.characters.length});
+				if (session.d3 == undefined) {
+					levels[levels.length] = session.end;
+					session.d3 = {"level": levels.length - 1};
+				}
+			}
+		});
 
-		var session_horizontal_offset = 0; // Will be computed from the dataset
+		// Remove sessions
+		sessionsToRemove.forEach(function(session) {
+			dataset.sessions.splice(dataset.sessions.indexOf(session), 1);
+		});
+
+		// Generate the colors of the characters
+		var colors = randomColor({count: dataset.characters.length});
+
+		// Remove the previous SVG container
+		d3.select(options.svg.element).select("svg").remove();
 
 		// Create the SVG container
-		d3.select("#canvas").select("svg").remove();
-		var svg_container = d3.select("#canvas").append("svg").attr("width", 10000).attr("height", 10000);
+		var svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
 
-		// Compute the coordinates of the characters
-		for (i = 0; i < dataset.characters.length; ++i) {
-			character_name = dataset.characters[i];
-			character = dataset.characters[i] = {"name": character_name};
-			character.d3 = {"x": 0, "y": (character_size_px + character_spacing_px) * i + character_size_px};
-			character.d3.color = character_colors[i];
+		var sampleTextDataset = [ { value: "Sample text" } ];
+
+		svg.selectAll("text").data(sampleTextDataset).enter().append("text")
+				.text(function(d) { return d.value; })
+				.each(function(d) { d.rect = this.getBBox(); });
+
+		svg.selectAll("text").remove();
+
+		// Create the characters scale
+		var characterScale = d3.scale.linear()
+				.domain([0, dataset.characters.length - 1])
+				.range([sampleTextDataset[0].rect.height, options.svg.height]);
+
+		// Assign each character a color and its coordinates
+		for(i = 0; i < dataset.characters.length; ++i) {
+			dataset.characters[i].d3 = {
+				x: 0,
+				y: characterScale(i),
+				color: colors[i]
+			};
 		}
 
-		// Display the characters
-		var characters = svg_container.selectAll("text").data(dataset.characters).enter().append("text")
-				.attr("x", function (d) {
-					return d.d3.x;
-				})
-				.attr("y", function (d) {
-					return d.d3.y;
-				})
-				.text(function (d) {
-					return d.name;
-				})
-				.each(function (d) {
-					d.d3.width = this.getBBox().width;
-				});
+		// Add the characters to the canvas and get their computed rectangles
+		svg.selectAll("text").data(dataset.characters).enter().append("text")
+				.attr("x", function(d) { return d.d3.x; })
+				.attr("y", function(d) { return d.d3.y; })
+				.text(function(d) { return d.name; })
+				.each(function(d) { d.d3.box = this.getBBox(); });
 
-		// Compute the horizontal offset for the sessions
-		dataset.characters.forEach(function (character) {
-			session_horizontal_offset = Math.max(session_horizontal_offset, character.d3.width);
+		// Compute the maximum width of the characters's rectangles
+		var maxCharactersWidth = dataset.characters.map(function(x) { return x.d3.box.width; })
+				.reduce(function(x, y) { return Math.max(x, y); });
+
+		// Compute the first point on the path of each character's line
+		dataset.characters.forEach(function(character) {
+			character.d3.points = [{
+				x: character.d3.box.width + options.characters.nameOffset,
+				y: character.d3.box.y + character.d3.box.height / 2
+			}];
 		});
 
-		dataset.characters.forEach(function (character) {
-			character.d3.points = [{"x": session_horizontal_offset, "y": character.d3.y}];
-		});
+		// Compute the number of levels
+		var maxLevels = dataset.sessions.map(function(x) { return x.d3.level; })
+				.reduce(function(x, y) { return Math.max(x, y); });
 
-		// Compute the coordinates of the session boxes
-		dataset.sessions.forEach(function (session) {
-			session.d3 = {};
+		console.log("Number of levels: ", maxLevels + 1);
 
-			if(session_hide_no_interaction && session.members.length == 1) {
-				session.d3.points = [];
-				return;
-			}
+		// Compute the maximum number of interactions a session contains
+		var maxMembers = dataset.sessions.map(function(x) { return x.members.length; })
+				.reduce(function(x, y) { return Math.max(x, y); });
 
-			session.d3.x = session_horizontal_offset + 20 + (session_horizontal_scaling * session.start) +
-					(((1 - session_horizontal_compress) * session_horizontal_scaling * (session.end - session.start)));
-			session.d3.y = (session_vertical_spacing + session_height) * (session.level - 1);
+		// Compute the story timeframe
+		var timeframe = dataset.sessions.map(function(x) { return {start: x.start, end: x.end}; })
+				.reduce(function(x, y) { return {start: Math.min(x.start, y.start), end: Math.max(x.end, y.end)}; });
 
-			session.d3.height = session_height;
+		// Create various scales used to process the dataset
+		var sessionVerticalScale = d3.scale.linear()
+				.domain([0, maxLevels])
+				.range([0, options.svg.height]);
 
-			if(session.start == session.end)
-				session.d3.width = 10;
-			else
-				session.d3.width = session_horizontal_compress * session_horizontal_scaling * (session.end - session.start);
+		var sessionHeightScale = d3.scale.linear()
+				.domain([0, maxMembers])
+				.range([0, options.svg.height / maxMembers]);
 
-			console.log(session.d3);
+		var sessionWidthScale = d3.scale.linear()
+				.domain([timeframe.start, timeframe.end])
+				.range([0, options.svg.width - maxCharactersWidth]);
 
-			var member_count = 1;
+		var sessionHorizontalScale = d3.scale.linear()
+				.domain([timeframe.start, timeframe.end])
+				.range([maxCharactersWidth, options.svg.width]);
 
-			session.members.forEach(function (index) {
-				member = dataset.characters[index];
+		// Compute the coordinates of the session boxes and add connect them to the characters
+		dataset.sessions.forEach(function(session) {
+			session.d3.x = sessionHorizontalScale(session.start);
+			session.d3.y = sessionVerticalScale(session.d3.level);
+
+			session.d3.width = sessionWidthScale(session.end - session.start);
+			session.d3.height = sessionHeightScale(session.members.length);
+
+			var lineVerticalScale = d3.scale.linear()
+					.domain([0, session.members.length - 1])
+					.range([session.d3.y, session.d3.y + session.d3.height]);
+
+			for(i = 0; i < session.members.length; ++i) {
+				member = dataset.characters.filter(function(x) { return x.id == session.members[i] })[0];
+				// y = session.d3.y + ((i + 1) / (session.members.length + 1)) * session.d3.height;
 
 				member.d3.points.push(
-						{
-							"x": session.d3.x,
-							"y": session.d3.y + (member_count * (session.d3.height / (session.members.length + 1)))
-						},
-						{
-							"x": session.d3.x + session.d3.width,
-							"y": session.d3.y + (member_count * (session.d3.height / (session.members.length + 1)))
-						}
+						{ x: session.d3.x, y: lineVerticalScale(i) },
+						{ x: session.d3.x + session.d3.width, y: lineVerticalScale(i) }
 				);
-
-				member_count += 1;
-			});
+			}
 		});
 
-		// Draw the session boxes
-		var rectangle = svg_container.selectAll("rect").data(dataset.sessions).enter().append("rect")
-				.attr("x", function (d) {
-					return d.d3.x
-				})
-				.attr("y", function (d) {
-					return d.d3.y;
-				})
-				.attr("height", function (d) {
-					return d.d3.height;
-				})
-				.attr("width", function (d) {
-					return d.d3.width;
-				})
-				.attr("fill", session_color);
+		// Add the session boxes to the canvas
+		svg.selectAll("rect").data(dataset.sessions).enter().append("rect")
+				.attr("x", function(d) { return d.d3.x; })
+				.attr("y", function(d) { return d.d3.y; })
+				.attr("height", function(d) { return d.d3.height; })
+				.attr("width", function(d) { return d.d3.width; });
 
 		// Draw the story lines
 		dataset.characters.forEach(function (character) {
-			var line_function = d3.svg.line().interpolate(interpolation)
-					.x(function (d) {
-						return d.x;
-					})
-					.y(function (d) {
-						return d.y;
-					});
+			var line_function = d3.svg.line().interpolate(options.characters.interpolation)
+					.x(function (d) { return d.x; })
+					.y(function (d) { return d.y; });
 
-			var story_lines = svg_container.append("path")
+			var story_lines = svg.append("path")
 					.attr("d", line_function(character.d3.points))
 					.attr("fill", "none")
 					.attr("stroke", character.d3.color)
 					.attr("stroke-width", 2);
 		});
+
+		return dataset;
+	};
+
+	var visualizeDataset = function(path) {
+		loadJSON(path, function(dataset) {
+			annotateDataset(dataset, options);
+		}, null);
+	};
+
+	var options = {
+		svg: {
+			element: "#canvas",
+			height: 950,
+			width: 1260
+		},
+		characters: {
+			interpolation: "step",
+			nameOffset: 10
+		},
+		sessions: {
+			removeNoInteraction: true
+		}
 	};
 
 	$(document).ready(function() {
 		$("#dataset").selectmenu({
+			width: 230,
 			select: function (event, ui) {
-				load_json(ui.item.value, function (dataset) {
-					plotDataset(annotateDataset(dataset));
-				}, null);
+				visualizeDataset($("#dataset").val(), options);
 			}
-		});
+		}).trigger("select");
 
 		$("#interpolation").selectmenu({
+			width: 200,
 			select: function (event, ui) {
-				interpolation = ui.item.value;
+				options.characters.interpolation = ui.item.value;
 
-				load_json($("#dataset").val(), function (dataset) {
-					plotDataset(annotateDataset(dataset));
-				}, null);
+				visualizeDataset($("#dataset").val(), options);
 			}
 		});
 
-		$("#session-height").slider({
-			min: 0,
-			max: 100,
-			value: 80,
-			slide: function(event, ui) {
-				session_height = ui.value;
-
-				load_json($("#dataset").val(), function (dataset) {
-					plotDataset(annotateDataset(dataset));
-				}, null);
-			}
-		});
-
-
-		$("#session-compress").slider({
-			min: 0,
-			max: 1,
-			value: 1,
-			step: 0.01,
-			slide: function(event, ui) {
-				session_horizontal_compress = ui.value;
-
-				load_json($("#dataset").val(), function (dataset) {
-					plotDataset(annotateDataset(dataset));
-				}, null);
-			}
-		});
-
-		$("#session-box").bind("change", function() {
-			if($(this).is(":checked")) {
-				session_color = "#F0F0F0";
-			} else {
-				session_color = "none";
-			}
-
-			load_json($("#dataset").val(), function (dataset) {
-				plotDataset(annotateDataset(dataset));
-			}, null);
-		});
-
-		$("#session-single-hide").bind("change", function() {
-			session_hide_no_interaction = $(this).is(":checked");
-
-			load_json($("#dataset").val(), function (dataset) {
-				plotDataset(annotateDataset(dataset));
-			}, null);
-		});
+		visualizeDataset($("#dataset").val(), options);
 	});
 </script>
 
-<div id="controls">
-	<div>
-	<select name="dataset" id="dataset" style="width: 250px">
-		<option value="undefined" selected>Dataset</option>
-		<option value="dataset/alice_in_wonderland.json">Alice in Wonderland</option>
-		<option value="dataset/the_matrix.json">The Matrix</option>
-		<option value="dataset/star_wars.json">Star Wars</option>
-	</select>
-	</div>
+<select name="dataset" id="dataset">
+	<option value="dataset/the_matrix.json" selected>The Matrix</option>
+	<option value="dataset/alice_in_wonderland.json">Alice in Wonderland</option>
+	<option value="dataset/star_wars.json">Star Wars</option>
+</select>
 
-	<div>
-	<select name="interpolation" id="interpolation" style="width: 250px">
-		<option value="undefined" selected>Interpolation method</option>
-		<option value="linear">Linear</option>
-		<option value="linear-closed">Linear-closed</option>
-		<option value="step">Step</option>
-		<option value="step-before">Step-before</option>
-		<option value="step-after">Step-after</option>
-		<option value="basis">Basis</option>
-		<option value="basis-open">Basis-open</option>
-		<option value="basis-closed">Basis-closed</option>
-		<option value="bundle">Bundle</option>
-		<option value="cardinal">Cardinal</option>
-		<option value="cardinal-open">Cardinal-open</option>
-		<option value="cardinal-closed">Cardinal-closed</option>
-		<option value="monotone">Monotone</option>
-	</select>
-	</div>
+<select name="interpolation" id="interpolation">
+	<option value="linear">Linear</option>
+	<option value="linear-closed">Linear-closed</option>
+	<option value="step" selected>Step</option>
+	<option value="step-before">Step-before</option>
+	<option value="step-after">Step-after</option>
+	<option value="basis">Basis</option>
+	<option value="basis-open">Basis-open</option>
+	<option value="basis-closed">Basis-closed</option>
+	<option value="bundle">Bundle</option>
+	<option value="cardinal">Cardinal</option>
+	<option value="cardinal-open">Cardinal-open</option>
+	<option value="cardinal-closed">Cardinal-closed</option>
+	<option value="monotone">Monotone</option>
+</select>
 
-	<div>
-		<label for="session-height">Session height</label>
-		<div id="session-height" ></div>
-	</div>
-
-	<div>
-		<label for="session-compress">Session compress</label>
-		<div id="session-compress" ></div>
-	</div>
-
-	<div>
-		<label for="session-box">Display session boxes</label>
-		<input type="checkbox" id="session-box" name="session-box"/>
-	</div>
-
-	<div>
-		<label for="session-single-hide">Hide sessions with no interaction</label>
-		<input type="checkbox" id="session-single-hide" name="session-single-hide"/>
-	</div>
-</div>
-<div id="canvas"></div>
+<div id="canvas"/>
 </body>
 </html>
