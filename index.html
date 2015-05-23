@@ -122,9 +122,13 @@
 		var maxMembers = dataset.sessions.map(function(x) { return x.members.length; })
 				.reduce(function(x, y) { return Math.max(x, y); });
 
+		console.log("Maximum members / session: ", maxMembers);
+
 		// Compute the story timeframe
 		var timeframe = dataset.sessions.map(function(x) { return {start: x.start, end: x.end}; })
 				.reduce(function(x, y) { return {start: Math.min(x.start, y.start), end: Math.max(x.end, y.end)}; });
+
+		console.log("Timeframe: ", timeframe);
 
 		// Create various scales used to process the dataset
 		var sessionVerticalScale = d3.scale.linear()
@@ -145,10 +149,15 @@
 
 		// Compute the coordinates of the session boxes and add connect them to the characters
 		dataset.sessions.forEach(function(session) {
-			session.d3.x = sessionHorizontalScale(session.start);
-			session.d3.y = sessionVerticalScale(session.d3.level);
+			var padding = (options.sessions.compress / 2) * (session.end - session.start + 1)
 
-			session.d3.width = sessionWidthScale(session.end - session.start);
+			session.d3.x = session.start + padding;
+			session.d3.x = sessionHorizontalScale(session.d3.x);
+
+			session.d3.width = (session.end - session.start + 1) - 2 * padding;
+			session.d3.width = sessionWidthScale(session.d3.width);
+
+			session.d3.y = sessionVerticalScale(session.d3.level);
 			session.d3.height = sessionHeightScale(session.members.length);
 
 			var lineVerticalScale = d3.scale.linear()
@@ -157,7 +166,6 @@
 
 			for(i = 0; i < session.members.length; ++i) {
 				member = dataset.characters.filter(function(x) { return x.id == session.members[i] })[0];
-				// y = session.d3.y + ((i + 1) / (session.members.length + 1)) * session.d3.height;
 
 				member.d3.points.push(
 						{ x: session.d3.x, y: lineVerticalScale(i) },
@@ -206,7 +214,8 @@
 			nameOffset: 10
 		},
 		sessions: {
-			removeNoInteraction: true
+			removeNoInteraction: true,
+			compress: 0
 		}
 	};
 
@@ -228,30 +237,53 @@
 		});
 
 		visualizeDataset($("#dataset").val(), options);
+
+		$("#compress").slider({
+			min: 0,
+			max: 1,
+			step: 0.1,
+			value: options.sessions.compress,
+			width: 100,
+			slide: function(event, ui) {
+				options.sessions.compress = ui.value;
+
+				visualizeDataset($("#dataset").val(), options);
+			}
+		});
 	});
 </script>
 
-<select name="dataset" id="dataset">
-	<option value="dataset/the_matrix.json" selected>The Matrix</option>
-	<option value="dataset/alice_in_wonderland.json">Alice in Wonderland</option>
-	<option value="dataset/star_wars.json">Star Wars</option>
-</select>
-
-<select name="interpolation" id="interpolation">
-	<option value="linear">Linear</option>
-	<option value="linear-closed">Linear-closed</option>
-	<option value="step" selected>Step</option>
-	<option value="step-before">Step-before</option>
-	<option value="step-after">Step-after</option>
-	<option value="basis">Basis</option>
-	<option value="basis-open">Basis-open</option>
-	<option value="basis-closed">Basis-closed</option>
-	<option value="bundle">Bundle</option>
-	<option value="cardinal">Cardinal</option>
-	<option value="cardinal-open">Cardinal-open</option>
-	<option value="cardinal-closed">Cardinal-closed</option>
-	<option value="monotone">Monotone</option>
-</select>
+<table>
+	<tr>
+		<td>
+			<select name="dataset" id="dataset">
+				<option value="dataset/the_matrix.json" selected>The Matrix</option>
+				<option value="dataset/alice_in_wonderland.json">Alice in Wonderland</option>
+				<option value="dataset/star_wars.json">Star Wars</option>
+			</select>
+		</td>
+		<td>
+			<select name="interpolation" id="interpolation">
+				<option value="linear">Linear</option>
+				<option value="linear-closed">Linear-closed</option>
+				<option value="step" selected>Step</option>
+				<option value="step-before">Step-before</option>
+				<option value="step-after">Step-after</option>
+				<option value="basis">Basis</option>
+				<option value="basis-open">Basis-open</option>
+				<option value="basis-closed">Basis-closed</option>
+				<option value="bundle">Bundle</option>
+				<option value="cardinal">Cardinal</option>
+				<option value="cardinal-open">Cardinal-open</option>
+				<option value="cardinal-closed">Cardinal-closed</option>
+				<option value="monotone">Monotone</option>
+			</select>
+		</td>
+		<td>
+			<div id="compress" style="display: inline-block; vertical-align: super; margin-left: 10px; width: 200px"/>
+		</td>
+	</tr>
+</table>
 
 <div id="canvas"/>
 </body>
