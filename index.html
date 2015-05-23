@@ -132,7 +132,7 @@
 
 		// Create various scales used to process the dataset
 		var sessionVerticalScale = d3.scale.linear()
-				.domain([0, maxLevels])
+				.domain([0, maxLevels + 1])
 				.range([0, options.svg.height]);
 
 		var sessionHeightScale = d3.scale.linear()
@@ -214,7 +214,7 @@
 			nameOffset: 10
 		},
 		sessions: {
-			removeNoInteraction: true,
+			removeNoInteraction: false,
 			compress: 0
 		}
 	};
@@ -265,17 +265,12 @@
 		<td>
 			<select name="interpolation" id="interpolation">
 				<option value="linear">Linear</option>
-				<option value="linear-closed">Linear-closed</option>
 				<option value="step" selected>Step</option>
 				<option value="step-before">Step-before</option>
 				<option value="step-after">Step-after</option>
 				<option value="basis">Basis</option>
-				<option value="basis-open">Basis-open</option>
-				<option value="basis-closed">Basis-closed</option>
 				<option value="bundle">Bundle</option>
 				<option value="cardinal">Cardinal</option>
-				<option value="cardinal-open">Cardinal-open</option>
-				<option value="cardinal-closed">Cardinal-closed</option>
 				<option value="monotone">Monotone</option>
 			</select>
 		</td>
