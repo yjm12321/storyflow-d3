@@ -132,7 +132,7 @@
 
 		// Create various scales used to process the dataset
 		var sessionVerticalScale = d3.scale.linear()
-				.domain([0, maxLevels + 1])
+				.domain([0, maxLevels])
 				.range([0, options.svg.height]);
 
 		var sessionHeightScale = d3.scale.linear()
@@ -179,7 +179,8 @@
 				.attr("x", function(d) { return d.d3.x; })
 				.attr("y", function(d) { return d.d3.y; })
 				.attr("height", function(d) { return d.d3.height; })
-				.attr("width", function(d) { return d.d3.width; });
+				.attr("width", function(d) { return d.d3.width; })
+				.attr("fill", "#F0F0F0");
 
 		// Draw the story lines
 		dataset.characters.forEach(function (character) {
@@ -193,11 +194,9 @@
 					.attr("stroke", character.d3.color)
 					.attr("stroke-width", 2);
 		});
-
-		return dataset;
 	};
 
-	var visualizeDataset = function(path) {
+	var visualizeDataset = function(path, options) {
 		loadJSON(path, function(dataset) {
 			annotateDataset(dataset, options);
 		}, null);
@@ -225,7 +224,7 @@
 			select: function (event, ui) {
 				visualizeDataset($("#dataset").val(), options);
 			}
-		}).trigger("select");
+		});
 
 		$("#interpolation").selectmenu({
 			width: 200,
@@ -235,8 +234,6 @@
 				visualizeDataset($("#dataset").val(), options);
 			}
 		});
-
-		visualizeDataset($("#dataset").val(), options);
 
 		$("#compress").slider({
 			min: 0,
@@ -250,6 +247,8 @@
 				visualizeDataset($("#dataset").val(), options);
 			}
 		});
+		
+		visualizeDataset($("#dataset").val(), options);
 	});
 </script>
 
