@@ -231,7 +231,7 @@
 					for(var k in locations[i])
 						for(l = 0; l < maxi[i].length-1; l++)
 							for(m = l+1; m < maxi[i].length; m++)
-								if(locations[i].hasOwnProperty(j) && locations[i].hasOwnProperty(k) && k > j)
+								if(k > j)
 									s = s + mat[j]["member " + maxi[i][m]]*mat[k]["member " + maxi[i][l]];
 
 				barycenter = {};
@@ -239,14 +239,12 @@
 				// compute the row baricenters
 				for(var j in locations[i]){
 					sum = 0;
-					if(locations[i].hasOwnProperty(j)){
 						barycenter[j] = 0;
 						for(l = 0; l < maxi[i].length; l++){
 							barycenter[j] = barycenter[j] + l*mat[j]["member " + maxi[i][l]];
 							sum = sum + mat[j]["member " + maxi[i][l]];
 						}
 						barycenter[j] = barycenter[j]/sum;
-					}
 				}
 
 //				console.log(barycenter);
@@ -273,7 +271,7 @@
 					for(var k in keysSorted)
 						for(l = 0; l < maxi[i].length-1; l++)
 							for(m = l+1; m < maxi[i].length; m++)
-								if(keysSorted.hasOwnProperty(j) && keysSorted.hasOwnProperty(k) && k > j)
+								if(k > j)
 									s1 = s1 + mat[keysSorted[j]]["member " + maxi[i][m]]*mat[keysSorted[k]]["member " + maxi[i][l]];
 
 				// compute the column baricenters
@@ -283,13 +281,12 @@
 					sum1 = 0;
 					barycenter1[l] = 0;
 					for(var j in keysSorted){
-						if(keysSorted.hasOwnProperty(j)){
 							barycenter1[l] = barycenter1[l] + j*mat[keysSorted[j]]["member " + maxi[i][l]];
 							//						console.log(keysSorted[j]);
 							//						console.log(mat[keysSorted[j]]["member " + maxi[i][l]]);
 							sum1 = sum1 + mat[keysSorted[j]]["member " + maxi[i][l]];
 							//						console.log(sum1);
-						}
+
 						if(sum1!=0)
 							barycenter1[l] = barycenter1[l]/sum1;
 					}
@@ -304,8 +301,7 @@
 					for(m in keysSorted1)
 						for(var j in locations[i])
 							for(var k in locations[i])
-								if(keysSorted1.hasOwnProperty(l) && keysSorted1.hasOwnProperty(m) && m > l &&
-										locations[i].hasOwnProperty(j) && locations[i].hasOwnProperty(k) && k > j){
+								if(m > l && k > j){
 //									console.log(j);
 //									console.log(k);
 //									console.log(l);
