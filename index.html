@@ -30,16 +30,67 @@
 		xhr.open("GET", path, true);
 		xhr.send();
 	}
+	
+	Array.prototype.unique = function() {
+    var a = this.concat();
+    for(var i=0; i<a.length; ++i) {
+        for(var j=i+1; j<a.length; ++j) {
+            if(a[i] === a[j])
+                a.splice(j--, 1);
+        }
+    }
 
+    return a;
+};
+
+// Check that 2 lines intersect
+function lineIntersect(x1,y1,x2,y2, x3,y3,x4,y4) {
+    var x=((x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4))/((x1-x2)*(y3-y4)-(y1-y2)*(x3-x4));
+    var y=((x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4))/((x1-x2)*(y3-y4)-(y1-y2)*(x3-x4));
+    if (isNaN(x)||isNaN(y)) {
+        return false;
+    } else {
+        if (x1>=x2) {
+            if (!(x2<=x&&x<=x1)) {return false;}
+        } else {
+            if (!(x1<=x&&x<=x2)) {return false;}
+        }
+        if (y1>=y2) {
+            if (!(y2<=y&&y<=y1)) {return false;}
+        } else {
+            if (!(y1<=y&&y<=y2)) {return false;}
+        }
+        if (x3>=x4) {
+            if (!(x4<=x&&x<=x3)) {return false;}
+        } else {
+            if (!(x3<=x&&x<=x4)) {return false;}
+        }
+        if (y3>=y4) {
+            if (!(y4<=y&&y<=y3)) {return false;}
+        } else {
+            if (!(y3<=y&&y<=y4)) {return false;}
+        }
+    }
+    return true;
+}
 	var annotateDataset = function (dataset, options) {
+		// Construct the so-called location tree
+		var locations = [];
+		for (i = 0; i < dataset.locations.length; i++) {
+			locations[i] = [];
+		}
 		// Keep track of the end time of the last session in each level
 		var levels = [];
 
 		// Store the sessions which will be removed
 		var sessionsToRemove = [];
 
-		// Compute the level of each sessions and identify the ones that will be removed
+		// Compute the level of each session and identify the ones that will be removed
 		dataset.sessions.forEach(function(session) {
+		
+			// To each location (index = id of location) add the sessions that take place in that location
+			locations[session.location][dataset.sessions.indexOf(session)] = session;
+			console.log(session.location);
 			if(options.sessions.removeNoInteraction == true && session.members.length == 1) {
 				sessionsToRemove.push(session);
 			} else {
@@ -56,7 +107,49 @@
 				}
 			}
 		});
-
+		// Sort the locations
+		// Place first locations with most characters, and sort the rest by the number of line crossings
+		maxi = [];
+		maxi_l = [];
+		console.log("start");
+		// Get the locations that have the maximum number of entities
+		for(i = 0; i < locations.length; i++){
+			maxi[i] = [];
+			locations[i].forEach(function(session) {
+			// = Math.max(maxi[i], locations[i][j].members.length);
+				maxi[i] = maxi[i].concat(session.members);
+			});
+			maxi[i] = maxi[i].unique();
+			maxi_l[i] = maxi[i].length;
+		}
+		nr = 0;
+		// Place the locations with most characters first
+		final = [];
+		rest = [];
+		for(i = 0; i < maxi_l.length; i++)
+			if(maxi_l[i] == Math.max.apply(Math, maxi_l)){
+				final[nr] = i;
+				nr++;
+			}
+			else rest.push(i);
+		// The array of locations, with the first being the ones with maximum number of entities
+		final = final.concat(rest);
+		console.log(final);
+		charact = [];
+		// Make an array of characters according to the recently ordered locations in final
+		for(i = 0; i < final.length; i++){
+			for(j = 0; j < maxi[final[i]].length; j++){
+				if($.inArray(dataset.characters[maxi[final[i]][j]],charact) == -1)
+					charact.push(dataset.characters[maxi[final[i]][j]]);
+					}
+		}
+//		console.log("locations");
+//		console.log(locations);
+//		console.log("maxi");
+//		console.log(maxi);
+		console.log("dataset charact");
+		dataset.characters = charact;
+		console.log(dataset.characters);
 		// Remove sessions
 		sessionsToRemove.forEach(function(session) {
 			dataset.sessions.splice(dataset.sessions.indexOf(session), 1);
@@ -92,8 +185,134 @@
 				color: colors[i]
 			};
 		}
-
+		
+		// ignore
+		// Sort the rest of the locations according to the number of crossings
+		//for(i = nr; i < final.length; i++){
+		//	for(j = 0; j <= nr; j++){
+		//		nr_cross = 0;
+		//		temp = final;
+		//		aux = temp[j];
+		//		temp[j] = final[i];
+		//		
+		//		for(k = 0; k < dataset.characters.length; k++)
+		//			for(l = 0; l < dataset.characters.length; l++)
+		//				if(k!= l && lineIntersect(dataset.characters[k].d3.x, dataset.characters[k].d3.y,
+		//	}
+		//}
+		mat = {};
+		it = 0;
+		s = 0;
+		s1 = 0;
+		s2 = 0;
+		//sort the sessions and entities using graph sweeping algorithm
+// 		while(it < 20){
+// 			it++;
+// 		for(i = 0; i < locations.length; i++){
+// 			mat = {};
+// 			// construct the interconnection matrices
+// 			locations[i].forEach(function(session) {
+// 				mat[locations[i].indexOf(session)] = {};
+// 				for(k = 0; k< maxi[i].length; k++){
+// 					if($.inArray(maxi[i][k], session.members) == -1)
+// 						mat[locations[i].indexOf(session)]["member " + maxi[i][k]] = 0;
+// 					else mat[locations[i].indexOf(session)]["member " + maxi[i][k]] = 1;
+// 					}
+// 				});
+// 				console.log("mat");
+// 				console.log(mat);
+// 			// compute the number of crossings
+// 			for(var j in locations[i])
+// 				for(var k in locations[i])
+// 					for(l = 0; l < maxi[i].length-1; l++)
+// 						for(m = l+1; m < maxi[i].length; m++)
+// 							if(locations[i].hasOwnProperty(j) && locations[i].hasOwnProperty(k) && k > j)
+// 								s = s + mat[j]["member " + maxi[i][m]]*mat[k]["member " + maxi[i][l]];
+// 			barycenter = {};
+// 			// compute the row baricenters
+// 			for(var j in locations[i]){
+// 				sum = 0;
+// 				if(locations[i].hasOwnProperty(j)){
+// 					barycenter[j] = 0;
+// 					for(l = 0; l < maxi[i].length; l++){
+// 						barycenter[j] = barycenter[j] + l*mat[j]["member " + maxi[i][l]];
+// 						sum = sum + mat[j]["member " + maxi[i][l]];
+// 					}
+// 					barycenter[j] = barycenter[j]/sum;
+// 					}
+// 				}
+// 			console.log(barycenter);
+// 			keysSorted = Object.keys(barycenter).sort(function(a,b){return barycenter[a]-barycenter[b]});
+// 			console.log(keysSorted);
+// //			for(var j in keysSorted){
+// //				if(keysSorted.hasOwnProperty(j)){
+// //					keysSorted[j] = barycenter[keysSorted[j]];
+// //				}
+// //			}
+// //			console.log(keysSorted);
+// 			// sort the sessions according to the barycenters
+// //			mat1 = {};
+// //			for(var j in keysSorted){
+// //				if(keysSorted.hasOwnProperty(j)){
+// //					mat1[keysSorted[j]]=mat[keysSorted[j]];
+// //				}			
+// //			}
+// 			// compute the number of crossings for the matrix with rows ordered by row baricenters
+// 			for(var j in keysSorted)
+// 				for(var k in keysSorted)
+// 					for(l = 0; l < maxi[i].length-1; l++)
+// 						for(m = l+1; m < maxi[i].length; m++)
+// 							if(keysSorted.hasOwnProperty(j) && keysSorted.hasOwnProperty(k) && k > j)
+// 								s1 = s1 + mat[keysSorted[j]]["member " + maxi[i][m]]*mat[keysSorted[k]]["member " + maxi[i][l]];
+// 			// compute the column baricenters
+// 			barycenter1 = {}
+// 			for(l = 0; l < maxi[i].length; l++){
+// 				sum1 = 0;
+// 				barycenter1[l] = 0;
+// 				for(var j in keysSorted){
+// 					if(keysSorted.hasOwnProperty(j)){
+// 						barycenter1[l] = barycenter1[l] + j*mat[keysSorted[j]]["member " + maxi[i][l]];
+// //						console.log(keysSorted[j]);
+// //						console.log(mat[keysSorted[j]]["member " + maxi[i][l]]);
+// 						sum1 = sum1 + mat[keysSorted[j]]["member " + maxi[i][l]];
+// //						console.log(sum1);
+// 					}
+// 					if(sum1!=0)
+// 						barycenter1[l] = barycenter1[l]/sum1;
+// 				}
+// 			}
+// 			console.log(barycenter1);
+// 			keysSorted1 = Object.keys(barycenter1).sort(function(a,b){return barycenter1[a]-barycenter1[b]});
+// 			console.log(keysSorted1);
+// 			// compute the number of crossings for the matrix with columns ordered by column baricenters
+// 			for(l in keysSorted1)
+// 				for(m in keysSorted1)
+// 					for(var j in locations[i])
+// 						for(var k in locations[i])
+// 							if(keysSorted1.hasOwnProperty(l) && keysSorted1.hasOwnProperty(m) && m > l &&
+// 								locations[i].hasOwnProperty(j) && locations[i].hasOwnProperty(k) && k > j){
+// 								console.log(j);
+// 								console.log(k);
+// 								console.log(l);
+// 								console.log(m);
+// 								console.log(keysSorted1[k]);
+// 								s2 = s2 + mat[j]["member " + maxi[i][keysSorted1[m]]]*mat[k]["member " + maxi[i][keysSorted1[l]]];
+// 								}
+// 
+// 
+// 		}
+// 		console.log(s);
+// 		console.log(s1);
+// 		if(s1 < s){	s = s1;	}
+// 		if(s2 < s){ s = s2; }
+// 		}
+// 		console.log(s);
+// 		console.log(s1);
 		// Add the characters to the canvas and get their computed rectangles
+		var area = d3.svg.area()
+    .x(function(d) { return x(d.x); })
+    .y0(function(d) { return y(d.y0); })
+    .y1(function(d) { return y(d.y0 + d.y); });
 		svg.selectAll("text").data(dataset.characters).enter().append("text")
 				.attr("x", function(d) { return d.d3.x; })
 				.attr("y", function(d) { return d.d3.y; })
@@ -256,9 +475,9 @@
 	<tr>
 		<td>
 			<select name="dataset" id="dataset">
-				<option value="dataset/the_matrix.json" selected>The Matrix</option>
+				<option value="dataset/the_matrix.json">The Matrix</option>
 				<option value="dataset/alice_in_wonderland.json">Alice in Wonderland</option>
-				<option value="dataset/star_wars.json">Star Wars</option>
+				<option value="dataset/star_wars.json" selected>Star Wars</option>
 			</select>
 		</td>
 		<td>
