@@ -73,33 +73,10 @@
 		for (i = 0; i < dataset.locations.length; i++) {
 			locations[i] = [];
 		}
-		// Keep track of the end time of the last session in each level
-		var levels = [];
 
-		// Store the sessions which will be removed
-		var sessionsToRemove = [];
-
-		// Compute the level of each session and identify the ones that will be removed
+		// To each location (index = id of location) add the sessions that take place in that location
 		dataset.sessions.forEach(function(session) {
-
-			// To each location (index = id of location) add the sessions that take place in that location
 			locations[session.location][dataset.sessions.indexOf(session)] = session;
-//			console.log(session.location);
-			if(options.sessions.removeNoInteraction == true && session.members.length == 1) {
-				sessionsToRemove.push(session);
-			} else {
-				for (i = 0; i < levels.length && session.d3 == undefined; ++i) {
-					if (levels[i] < session.start) {
-						session.d3 = {"level": i};
-						levels[i] = session.end;
-					}
-				}
-
-				if (session.d3 == undefined) {
-					levels[levels.length] = session.end;
-					session.d3 = {"level": levels.length - 1};
-				}
-			}
 		});
 
 		// Sort the locations
@@ -151,42 +128,6 @@
 //		console.log("dataset charact");
 		dataset.characters = charact;
 //		console.log(dataset.characters);
-
-		// Remove sessions
-		sessionsToRemove.forEach(function(session) {
-			dataset.sessions.splice(dataset.sessions.indexOf(session), 1);
-		});
-
-		// Generate the colors of the characters
-		var colors = randomColor({count: dataset.characters.length});
-
-		// Remove the previous SVG container
-		d3.select(options.svg.element).select("svg").remove();
-
-		// Create the SVG container
-		var svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
-
-		var sampleTextDataset = [ { value: "Sample text" } ];
-
-		svg.selectAll("text").data(sampleTextDataset).enter().append("text")
-				.text(function(d) { return d.value; })
-				.each(function(d) { d.rect = this.getBBox(); });
-
-		svg.selectAll("text").remove();
-
-		// Create the characters scale
-		var characterScale = d3.scale.linear()
-				.domain([0, dataset.characters.length - 1])
-				.range([sampleTextDataset[0].rect.height, options.svg.height]);
-
-		// Assign each character a color and its coordinates
-		for(i = 0; i < dataset.characters.length; ++i) {
-			dataset.characters[i].d3 = {
-				x: 0,
-				y: characterScale(i),
-				color: colors[i]
-			};
-		}
 
 		// ignore
 		// Sort the rest of the locations according to the number of crossings
@@ -320,6 +261,69 @@
 		}
 //		console.log(s);
 //		console.log(s1);
+
+		/************************************************ PREVIEW CODE ************************************************/
+
+		// Keep track of the end time of the last session in each level
+		var levels = [];
+
+		// Store the sessions which will be removed
+		var sessionsToRemove = [];
+
+		// Compute the level of each session and identify the ones that will be removed
+		dataset.sessions.forEach(function(session) {
+			if(options.sessions.removeNoInteraction == true && session.members.length == 1) {
+				sessionsToRemove.push(session);
+			} else {
+				for (i = 0; i < levels.length && session.d3 == undefined; ++i) {
+					if (levels[i] < session.start) {
+						session.d3 = {"level": i};
+						levels[i] = session.end;
+					}
+				}
+
+				if (session.d3 == undefined) {
+					levels[levels.length] = session.end;
+					session.d3 = {"level": levels.length - 1};
+				}
+			}
+		});
+
+		// Remove sessions
+		sessionsToRemove.forEach(function(session) {
+			dataset.sessions.splice(dataset.sessions.indexOf(session), 1);
+		});
+
+		// Generate the colors of the characters
+		var colors = randomColor({count: dataset.characters.length});
+
+		// Remove the previous SVG container
+		d3.select(options.svg.element).select("svg").remove();
+
+		// Create the SVG container
+		var svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
+
+		var sampleTextDataset = [ { value: "Sample text" } ];
+
+		svg.selectAll("text").data(sampleTextDataset).enter().append("text")
+				.text(function(d) { return d.value; })
+				.each(function(d) { d.rect = this.getBBox(); });
+
+		svg.selectAll("text").remove();
+
+		// Create the characters scale
+		var characterScale = d3.scale.linear()
+				.domain([0, dataset.characters.length - 1])
+				.range([sampleTextDataset[0].rect.height, options.svg.height]);
+
+		// Assign each character a color and its coordinates
+		for(i = 0; i < dataset.characters.length; ++i) {
+			dataset.characters[i].d3 = {
+				x: 0,
+				y: characterScale(i),
+				color: colors[i]
+			};
+		}
 
 		// Add the characters to the canvas and get their computed rectangles
 		var area = d3.svg.area()
