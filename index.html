@@ -31,18 +31,6 @@
 		xhr.send();
 	}
 
-	Array.prototype.unique = function() {
-		var a = this.concat();
-		for(var i=0; i<a.length; ++i) {
-			for(var j=i+1; j<a.length; ++j) {
-				if(a[i] === a[j])
-					a.splice(j--, 1);
-			}
-		}
-
-		return a;
-	};
-
 	// Check that 2 lines intersect
 	// From http://stackoverflow.com/questions/9043805/test-if-two-lines-intersect-javascript-function
 	function lineIntersect(x1, y1, x2, y2,  x3, y3, x4, y4) {
@@ -127,7 +115,9 @@
 				// = Math.max(maxi[i], locations[i][j].members.length);
 				maxi[i] = maxi[i].concat(session.members);
 			});
-			maxi[i] = maxi[i].unique();
+			maxi[i] = maxi[i].filter(function onlyUnique(value, index, self) {
+				return self.indexOf(value) === index;
+			});
 			maxi_l[i] = maxi[i].length;
 		}
 		nr = 0;
