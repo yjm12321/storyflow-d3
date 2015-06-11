@@ -90,7 +90,7 @@
 
 			// To each location (index = id of location) add the sessions that take place in that location
 			locations[session.location][dataset.sessions.indexOf(session)] = session;
-			console.log(session.location);
+//			console.log(session.location);
 			if(options.sessions.removeNoInteraction == true && session.members.length == 1) {
 				sessionsToRemove.push(session);
 			} else {
@@ -111,7 +111,7 @@
 		// Place first locations with most characters, and sort the rest by the number of line crossings
 		maxi = [];
 		maxi_l = [];
-		console.log("start");
+//		console.log("start");
 		// Get the locations that have the maximum number of entities
 		for(i = 0; i < locations.length; i++){
 			maxi[i] = [];
@@ -134,7 +134,7 @@
 			else rest.push(i);
 		// The array of locations, with the first being the ones with maximum number of entities
 		final = final.concat(rest);
-		console.log(final);
+//		console.log(final);
 		charact = [];
 		// Make an array of characters according to the recently ordered locations in final
 		for(i = 0; i < final.length; i++){
@@ -147,9 +147,9 @@
 //		console.log(locations);
 //		console.log("maxi");
 //		console.log(maxi);
-		console.log("dataset charact");
+//		console.log("dataset charact");
 		dataset.characters = charact;
-		console.log(dataset.characters);
+//		console.log(dataset.characters);
 		// Remove sessions
 		sessionsToRemove.forEach(function(session) {
 			dataset.sessions.splice(dataset.sessions.indexOf(session), 1);
@@ -219,8 +219,8 @@
 						else mat[locations[i].indexOf(session)]["member " + maxi[i][k]] = 1;
 					}
 				});
-				console.log("mat");
-				console.log(mat);
+//				console.log("mat");
+//				console.log(mat);
 				// compute the number of crossings
 				for(var j in locations[i])
 					for(var k in locations[i])
@@ -241,9 +241,9 @@
 						barycenter[j] = barycenter[j]/sum;
 					}
 				}
-				console.log(barycenter);
+//				console.log(barycenter);
 				keysSorted = Object.keys(barycenter).sort(function(a,b){return barycenter[a]-barycenter[b]});
-				console.log(keysSorted);
+//				console.log(keysSorted);
 				//			for(var j in keysSorted){
 				//				if(keysSorted.hasOwnProperty(j)){
 				//					keysSorted[j] = barycenter[keysSorted[j]];
@@ -281,9 +281,9 @@
 							barycenter1[l] = barycenter1[l]/sum1;
 					}
 				}
-				console.log(barycenter1);
+//				console.log(barycenter1);
 				keysSorted1 = Object.keys(barycenter1).sort(function(a,b){return barycenter1[a]-barycenter1[b]});
-				console.log(keysSorted1);
+//				console.log(keysSorted1);
 				// compute the number of crossings for the matrix with columns ordered by column baricenters
 				for(l in keysSorted1)
 					for(m in keysSorted1)
@@ -291,23 +291,23 @@
 							for(var k in locations[i])
 								if(keysSorted1.hasOwnProperty(l) && keysSorted1.hasOwnProperty(m) && m > l &&
 										locations[i].hasOwnProperty(j) && locations[i].hasOwnProperty(k) && k > j){
-									console.log(j);
-									console.log(k);
-									console.log(l);
-									console.log(m);
-									console.log(keysSorted1[k]);
+//									console.log(j);
+//									console.log(k);
+//									console.log(l);
+//									console.log(m);
+//									console.log(keysSorted1[k]);
 									s2 = s2 + mat[j]["member " + maxi[i][keysSorted1[m]]]*mat[k]["member " + maxi[i][keysSorted1[l]]];
 								}
 
 
 			}
-			console.log(s);
-			console.log(s1);
+//			console.log(s);
+//			console.log(s1);
 			if(s1 < s){	s = s1;	}
 			if(s2 < s){ s = s2; }
 		}
-		console.log(s);
-		console.log(s1);
+//		console.log(s);
+//		console.log(s1);
 		// Add the characters to the canvas and get their computed rectangles
 		var area = d3.svg.area()
 				.x(function(d) { return x(d.x); })
