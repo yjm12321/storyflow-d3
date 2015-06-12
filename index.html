@@ -31,271 +31,48 @@
 		xhr.send();
 	}
 
-	// Check that 2 lines intersect
-	// From http://stackoverflow.com/questions/9043805/test-if-two-lines-intersect-javascript-function
-	function lineIntersect(x1, y1, x2, y2,  x3, y3, x4, y4) {
-		var x=((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / ((x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4));
-		var y=((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / ((x1 - x2) * (y3 - y4) - (y1-y2) * (x3-x4));
-
-		if (isNaN(x) || isNaN(y)) {
-			return false;
-		}
-
-		if (x1 >= x2) {
-			if (!(x2 <= x && x <= x1)) { return false; }
-		} else {
-			if (!(x1 <= x && x <= x2)) { return false; }
-		}
-
-		if (y1 >= y2) {
-			if (!(y2 <= y && y <= y1)) { return false; }
-		} else {
-			if (!(y1 <= y && y <= y2)) { return false; }
-		}
-
-		if (x3 >= x4) {
-			if (!(x4 <= x && x <= x3)) { return false; }
-		} else {
-			if (!(x3 <= x && x <= x4)) { return false; }
-		}
-
-		if (y3 >= y4) {
-			if (!(y4 <= y && y <= y3)) { return false; }
-		} else {
-			if (!(y3 <= y && y <= y4)) { return false; }
-		}
-
-		return true;
-	}
 	var annotateDataset = function (dataset, options) {
-		// Construct the so-called location tree
-		var locations = [];
-		for (i = 0; i < dataset.locations.length; i++) {
-			locations[i] = [];
-		}
+		/************************************************* ALGORITHM **************************************************/
+		/********* Implementation of the algorithm presented in "StoryFlow: Tracking the Evolution of Stories" ********/
 
-		// To each location (index = id of location) add the sessions that take place in that location
-		dataset.sessions.forEach(function(session) {
-			locations[session.location][dataset.sessions.indexOf(session)] = session;
-		});
+		// Compute the story timeframe
+		var timeframe = dataset.sessions.map(function(x) { return { start: x.start, end: x.end } })
+				.reduce(function(x, y) { return { start: Math.min(x.start, y.start), end: Math.max(x.end, y.end) } });
 
-		// Sort the locations
-		// Place first locations with most characters, and sort the rest by the number of line crossings
-		maxi = [];
-		maxi_l = [];
-//		console.log("start");
+		console.log("Timeframe: ", timeframe);
 
-		// Get the locations that have the maximum number of entities
-		for(i = 0; i < locations.length; i++){
-			maxi[i] = [];
-			locations[i].forEach(function(session) {
-				// = Math.max(maxi[i], locations[i][j].members.length);
-				maxi[i] = maxi[i].concat(session.members);
+		dataset.d3 = { time: [] };
+
+		// Construct the relationship trees (one for each time unit)
+		for(var time = timeframe.start; time < timeframe.end; ++time) {
+			var moment = dataset.d3.time[time] = { locations: [ ], sortedCharacters: [ ] };
+
+			// Append the sessions and the characters that belong to this moment
+			for(var i = 0; i < dataset.sessions.length; ++i) {
+				var session = dataset.sessions[i];
+				var location = moment.locations[session.location];
+
+				if(session.start <= time && time < session.end) {
+					if(location == undefined)
+						location = moment.locations[session.location] = { sessions: [ ], characters: [ ] };
+
+					location.sessions.push(i);
+					location.characters = location.characters.concat(session.members);
+				}
+			}
+
+			// Place the locations with the highest number of characters first
+			moment.locations.sort(function(x, y) { return x.characters.length < y.characters.length; });
+
+			// Store the order of the characters explicitly
+			moment.locations.forEach(function(location) {
+				moment.sortedCharacters = moment.sortedCharacters.concat(location.characters);
 			});
-			maxi[i] = maxi[i].filter(function onlyUnique(value, index, self) {
-				return self.indexOf(value) === index;
-			});
-			maxi_l[i] = maxi[i].length;
+
+			// TODO: Place the other locations such that the number of crossings is minimized
 		}
-		nr = 0;
 
-		// Place the locations with most characters first
-		final = [];
-		rest = [];
-		for(i = 0; i < maxi_l.length; i++)
-			if(maxi_l[i] == Math.max.apply(Math, maxi_l)){
-				final[nr] = i;
-				nr++;
-			}
-			else rest.push(i);
-
-		// The array of locations, with the first being the ones with maximum number of entities
-		final = final.concat(rest);
-//		console.log(final);
-		charact = [];
-
-		// Make an array of characters according to the recently ordered locations in final
-		for(i = 0; i < final.length; i++){
-			for(j = 0; j < maxi[final[i]].length; j++){
-				if($.inArray(dataset.characters[maxi[final[i]][j]],charact) == -1)
-					charact.push(dataset.characters[maxi[final[i]][j]]);
-			}
-		}
-//		console.log("locations");
-//		console.log(locations);
-//		console.log("maxi");
-//		console.log(maxi);
-//		console.log("dataset charact");
-		dataset.characters = charact;
-//		console.log(dataset.characters);
-
-		// ignore
-		// Sort the rest of the locations according to the number of crossings
-		//for(i = nr; i < final.length; i++){
-		//	for(j = 0; j <= nr; j++){
-		//		nr_cross = 0;
-		//		temp = final;
-		//		aux = temp[j];
-		//		temp[j] = final[i];
-		//		
-		//		for(k = 0; k < dataset.characters.length; k++)
-		//			for(l = 0; l < dataset.characters.length; l++)
-		//				if(k!= l && lineIntersect(dataset.characters[k].d3.x, dataset.characters[k].d3.y,
-		//	}
-		//}
-
-		mat = {};
-		it = 0;
-		s = 0;
-		s1 = 0;
-		s2 = 0;
-
-		//sort the sessions and entities using graph sweeping algorithm
-		while(it < 20){
-			it++;
-			for(i = 0; i < locations.length; i++){
-				mat = {};
-				// construct the interconnection matrices
-				locations[i].forEach(function(session) {
-					mat[locations[i].indexOf(session)] = {};
-					for(k = 0; k< maxi[i].length; k++){
-						if($.inArray(maxi[i][k], session.members) == -1)
-							mat[locations[i].indexOf(session)]["member " + maxi[i][k]] = 0;
-						else mat[locations[i].indexOf(session)]["member " + maxi[i][k]] = 1;
-					}
-				});
-//				console.log("mat");
-//				console.log(mat);
-
-				// compute the number of crossings
-				for(var j in locations[i])
-					for(var k in locations[i])
-						for(l = 0; l < maxi[i].length-1; l++)
-							for(m = l+1; m < maxi[i].length; m++)
-								if(k > j)
-									s = s + mat[j]["member " + maxi[i][m]]*mat[k]["member " + maxi[i][l]];
-
-				barycenter = {};
-
-				// compute the row baricenters
-				for(var j in locations[i]){
-					sum = 0;
-						barycenter[j] = 0;
-						for(l = 0; l < maxi[i].length; l++){
-							barycenter[j] = barycenter[j] + l*mat[j]["member " + maxi[i][l]];
-							sum = sum + mat[j]["member " + maxi[i][l]];
-						}
-						barycenter[j] = barycenter[j]/sum;
-				}
-
-//				console.log(barycenter);
-
-				keysSorted = Object.keys(barycenter).sort(function(a,b){return barycenter[a]-barycenter[b]});
-
-//				console.log(keysSorted);
-				//			for(var j in keysSorted){
-				//				if(keysSorted.hasOwnProperty(j)){
-				//					keysSorted[j] = barycenter[keysSorted[j]];
-				//				}
-				//			}
-				//			console.log(keysSorted);
-				// sort the sessions according to the barycenters
-				//			mat1 = {};
-				//			for(var j in keysSorted){
-				//				if(keysSorted.hasOwnProperty(j)){
-				//					mat1[keysSorted[j]]=mat[keysSorted[j]];
-				//				}
-				//			}
-				// compute the number of crossings for the matrix with rows ordered by row baricenters
-
-				for(var j in keysSorted)
-					for(var k in keysSorted)
-						for(l = 0; l < maxi[i].length-1; l++)
-							for(m = l+1; m < maxi[i].length; m++)
-								if(k > j)
-									s1 = s1 + mat[keysSorted[j]]["member " + maxi[i][m]]*mat[keysSorted[k]]["member " + maxi[i][l]];
-
-				// compute the column baricenters
-				barycenter1 = {}
-
-				for(l = 0; l < maxi[i].length; l++){
-					sum1 = 0;
-					barycenter1[l] = 0;
-					for(var j in keysSorted){
-							barycenter1[l] = barycenter1[l] + j*mat[keysSorted[j]]["member " + maxi[i][l]];
-							//						console.log(keysSorted[j]);
-							//						console.log(mat[keysSorted[j]]["member " + maxi[i][l]]);
-							sum1 = sum1 + mat[keysSorted[j]]["member " + maxi[i][l]];
-							//						console.log(sum1);
-
-						if(sum1!=0)
-							barycenter1[l] = barycenter1[l]/sum1;
-					}
-				}
-
-//				console.log(barycenter1);
-				keysSorted1 = Object.keys(barycenter1).sort(function(a,b){return barycenter1[a]-barycenter1[b]});
-//				console.log(keysSorted1);
-
-				// compute the number of crossings for the matrix with columns ordered by column baricenters
-				for(l in keysSorted1)
-					for(m in keysSorted1)
-						for(var j in locations[i])
-							for(var k in locations[i])
-								if(m > l && k > j){
-//									console.log(j);
-//									console.log(k);
-//									console.log(l);
-//									console.log(m);
-//									console.log(keysSorted1[k]);
-									s2 = s2 + mat[j]["member " + maxi[i][keysSorted1[m]]]*mat[k]["member " + maxi[i][keysSorted1[l]]];
-								}
-
-
-			}
-
-//			console.log(s);
-//			console.log(s1);
-			if(s1 < s){	s = s1;	}
-			if(s2 < s){ s = s2; }
-		}
-//		console.log(s);
-//		console.log(s1);
-
-		/************************************************ PREVIEW CODE ************************************************/
-
-		// Keep track of the end time of the last session in each level
-		var levels = [];
-
-		// Store the sessions which will be removed
-		var sessionsToRemove = [];
-
-		// Compute the level of each session and identify the ones that will be removed
-		dataset.sessions.forEach(function(session) {
-			if(options.sessions.removeNoInteraction == true && session.members.length == 1) {
-				sessionsToRemove.push(session);
-			} else {
-				for (i = 0; i < levels.length && session.d3 == undefined; ++i) {
-					if (levels[i] < session.start) {
-						session.d3 = {"level": i};
-						levels[i] = session.end;
-					}
-				}
-
-				if (session.d3 == undefined) {
-					levels[levels.length] = session.end;
-					session.d3 = {"level": levels.length - 1};
-				}
-			}
-		});
-
-		// Remove sessions
-		sessionsToRemove.forEach(function(session) {
-			dataset.sessions.splice(dataset.sessions.indexOf(session), 1);
-		});
-
-		// Generate the colors of the characters
-		var colors = randomColor({count: dataset.characters.length});
+		/***************************************************** D3 *****************************************************/
 
 		// Remove the previous SVG container
 		d3.select(options.svg.element).select("svg").remove();
@@ -303,120 +80,43 @@
 		// Create the SVG container
 		var svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
 
-		var sampleTextDataset = [ { value: "Sample text" } ];
+		// Generate the colors of the characters
+		var colors = randomColor({count: dataset.characters.length});
 
-		svg.selectAll("text").data(sampleTextDataset).enter().append("text")
-				.text(function(d) { return d.value; })
-				.each(function(d) { d.rect = this.getBBox(); });
-
-		svg.selectAll("text").remove();
-
-		// Create the characters scale
-		var characterScale = d3.scale.linear()
-				.domain([0, dataset.characters.length - 1])
-				.range([sampleTextDataset[0].rect.height, options.svg.height]);
-
-		// Assign each character a color and its coordinates
+		// Assign each character a color
 		for(i = 0; i < dataset.characters.length; ++i) {
-			dataset.characters[i].d3 = {
-				x: 0,
-				y: characterScale(i),
-				color: colors[i]
-			};
+			dataset.characters[i].d3 = { color: colors[i] };
 		}
 
-		// Add the characters to the canvas and get their computed rectangles
-		var area = d3.svg.area()
-				.x(function(d) { return x(d.x); })
-				.y0(function(d) { return y(d.y0); })
-				.y1(function(d) { return y(d.y0 + d.y); });
-		svg.selectAll("text").data(dataset.characters).enter().append("text")
-				.attr("x", function(d) { return d.d3.x; })
-				.attr("y", function(d) { return d.d3.y; })
-				.text(function(d) { return d.name; })
-				.each(function(d) { d.d3.box = this.getBBox(); });
-
-		// Compute the maximum width of the characters's rectangles
-		var maxCharactersWidth = dataset.characters.map(function(x) { return x.d3.box.width; })
+		// Compute the maximum number of characters in a time unit
+		var maxCharacters = dataset.d3.time.map(function(time) { return time.sortedCharacters.length; })
 				.reduce(function(x, y) { return Math.max(x, y); });
 
-		// Compute the first point on the path of each character's line
-		dataset.characters.forEach(function(character) {
-			character.d3.points = [{
-				x: character.d3.box.width + options.characters.nameOffset,
-				y: character.d3.box.y + character.d3.box.height / 2
-			}];
-		});
 
-		// Compute the number of levels
-		var maxLevels = dataset.sessions.map(function(x) { return x.d3.level; })
-				.reduce(function(x, y) { return Math.max(x, y); });
-
-		console.log("Number of levels: ", maxLevels + 1);
-
-		// Compute the maximum number of interactions a session contains
-		var maxMembers = dataset.sessions.map(function(x) { return x.members.length; })
-				.reduce(function(x, y) { return Math.max(x, y); });
-
-		console.log("Maximum members / session: ", maxMembers);
-
-		// Compute the story timeframe
-		var timeframe = dataset.sessions.map(function(x) { return {start: x.start, end: x.end}; })
-				.reduce(function(x, y) { return {start: Math.min(x.start, y.start), end: Math.max(x.end, y.end)}; });
-
-		console.log("Timeframe: ", timeframe);
+		console.log("Maximum characters in a time unit: ", maxCharacters);
 
 		// Create various scales used to process the dataset
-		var sessionVerticalScale = d3.scale.linear()
-				.domain([0, maxLevels])
+		var verticalScale = d3.scale.linear()
+				.domain([0, maxCharacters])
 				.range([0, options.svg.height]);
 
-		var sessionHeightScale = d3.scale.linear()
-				.domain([0, maxMembers])
-				.range([0, options.svg.height / maxMembers]);
-
-		var sessionWidthScale = d3.scale.linear()
+		var horizontalScale = d3.scale.linear()
 				.domain([timeframe.start, timeframe.end])
-				.range([0, options.svg.width - maxCharactersWidth]);
+				.range([0, options.svg.width]);
 
-		var sessionHorizontalScale = d3.scale.linear()
-				.domain([timeframe.start, timeframe.end])
-				.range([maxCharactersWidth, options.svg.width]);
+		// Compute path of each character
+		for(var t = 0; t < dataset.d3.time.length; ++t) {
+			var time = dataset.d3.time[t];
 
-		// Compute the coordinates of the session boxes and add connect them to the characters
-		dataset.sessions.forEach(function(session) {
-			var padding = (options.sessions.compress / 2) * (session.end - session.start + 1)
+			for(var i = 0; i < time.sortedCharacters.length; ++i) {
+				var character = dataset.characters[time.sortedCharacters[i]];
 
-			session.d3.x = session.start + padding;
-			session.d3.x = sessionHorizontalScale(session.d3.x);
+				if(character.d3.points == undefined)
+					character.d3.points = [ ];
 
-			session.d3.width = (session.end - session.start + 1) - 2 * padding;
-			session.d3.width = sessionWidthScale(session.d3.width);
-
-			session.d3.y = sessionVerticalScale(session.d3.level);
-			session.d3.height = sessionHeightScale(session.members.length);
-
-			var lineVerticalScale = d3.scale.linear()
-					.domain([0, session.members.length - 1])
-					.range([session.d3.y, session.d3.y + session.d3.height]);
-
-			for(i = 0; i < session.members.length; ++i) {
-				member = dataset.characters.filter(function(x) { return x.id == session.members[i] })[0];
-
-				member.d3.points.push(
-						{ x: session.d3.x, y: lineVerticalScale(i) },
-						{ x: session.d3.x + session.d3.width, y: lineVerticalScale(i) }
-				);
+				character.d3.points.push({ x: horizontalScale(t), y: verticalScale(i) });
 			}
-		});
-
-		// Add the session boxes to the canvas
-		svg.selectAll("rect").data(dataset.sessions).enter().append("rect")
-				.attr("x", function(d) { return d.d3.x; })
-				.attr("y", function(d) { return d.d3.y; })
-				.attr("height", function(d) { return d.d3.height; })
-				.attr("width", function(d) { return d.d3.width; })
-				.attr("fill", "#F0F0F0");
+		}
 
 		// Draw the story lines
 		dataset.characters.forEach(function (character) {
@@ -424,12 +124,23 @@
 					.x(function (d) { return d.x; })
 					.y(function (d) { return d.y; });
 
-			var story_lines = svg.append("path")
-					.attr("d", line_function(character.d3.points))
+			svg.append("path").attr("d", line_function(character.d3.points))
+					.attr("id", "character_" + character.id)
+					.attr("xlink:href", "character_" + character.id)
 					.attr("fill", "none")
 					.attr("stroke", character.d3.color)
 					.attr("stroke-width", 2);
 		});
+
+		// Append the character names
+		svg.selectAll("text").data(dataset.characters.map(function(x) { return x.name }))
+				.enter()
+				.append("text")
+				.attr("x", 8)
+				.attr("dy", 28)
+				.append("textPath")
+				.attr("xlink:href", function(d, i) { return "#character_" + i; })
+				.text(function(d, i) { return d; });
 	};
 
 	var visualizeDataset = function(path, options) {
@@ -441,16 +152,15 @@
 	var options = {
 		svg: {
 			element: "#canvas",
-			height: 950,
-			width: 1260
+			height: 696,
+			width: 1342
 		},
 		characters: {
-			interpolation: "step",
+			interpolation: "linear",
 			nameOffset: 10
 		},
-		sessions: {
-			removeNoInteraction: false,
-			compress: 0
+		algorithm: {
+			sweepingMaxIterations: 1
 		}
 	};
 
@@ -471,19 +181,6 @@
 			}
 		});
 
-		$("#compress").slider({
-			min: 0,
-			max: 1,
-			step: 0.1,
-			value: options.sessions.compress,
-			width: 100,
-			slide: function(event, ui) {
-				options.sessions.compress = ui.value;
-
-				visualizeDataset($("#dataset").val(), options);
-			}
-		});
-
 		visualizeDataset($("#dataset").val(), options);
 	});
 </script>
@@ -499,8 +196,8 @@
 		</td>
 		<td>
 			<select name="interpolation" id="interpolation">
-				<option value="linear">Linear</option>
-				<option value="step" selected>Step</option>
+				<option value="linear" selected>Linear</option>
+				<option value="step">Step</option>
 				<option value="step-before">Step-before</option>
 				<option value="step-after">Step-after</option>
 				<option value="basis">Basis</option>
@@ -508,9 +205,6 @@
 				<option value="cardinal">Cardinal</option>
 				<option value="monotone">Monotone</option>
 			</select>
-		</td>
-		<td>
-			<div id="compress" style="display: inline-block; vertical-align: super; margin-left: 10px; width: 200px"/>
 		</td>
 	</tr>
 </table>
