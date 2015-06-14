@@ -20,8 +20,9 @@
 		},
 		characters: {
 			interpolation: "monotone",
-			strokeWidth: 2,
-			highlightStrokeWidth: 6,
+			sessionCoefficient: 3,
+			strokeWidth: 4,
+			highlightStrokeWidth: 8,
 			highlightDuration: 400,
 			nonHighlightedOpacity: 0.2
 		},
@@ -119,14 +120,42 @@
 					if(character.d3.points == undefined)
 						character.d3.points = [];
 
-					character.d3.points.push({ x: horizontalScale(t), y: mean + ((verticalScale(offset + i) - mean) / 3) });
+					character.d3.points.push({ x: horizontalScale(t), y: mean + ((verticalScale(offset + i) - mean) / options.characters.sessionCoefficient) });
 				}
 
 				offset += restriction;
 			});
 		}
 
+		function toggleCharacterHighlight(character) {
+			// Previously no characters were highlighted => fade all away
+			if(dataset.d3.charactersHighlighted == 0)
+				d3.selectAll("path")
+						.transition()
+						.duration(options.characters.highlightDuration)
+						.style('opacity', options.characters.nonHighlightedOpacity)
+						.style('stroke-width', options.characters.strokeWidth);
+
+			character.d3.isHighlighted = !character.d3.isHighlighted;
+			dataset.d3.charactersHighlighted += character.d3.isHighlighted ? 1 : -1;
+
+			// No characters are highlighted => unfade them
+			if(dataset.d3.charactersHighlighted == 0)
+				d3.selectAll("path")
+						.transition()
+						.duration(options.characters.highlightDuration)
+						.style('opacity', 1.0)
+						.style('stroke-width', options.characters.strokeWidth);
+		}
+
 		dataset.d3.charactersHighlighted = 0;
+
+		svg.on("click", function() {
+			dataset.characters.forEach(function(character) {
+				if(character.d3.isHighlighted)
+					toggleCharacterHighlight(character);
+			})
+		});
 
 		// Draw the story lines
 		dataset.characters.forEach(function (character) {
@@ -143,27 +172,15 @@
 					.attr("stroke", character.d3.color)
 					.attr("stroke-width", options.characters.strokeWidth)
 					.on("click", function() {
-						character.d3.isHighlighted = !character.d3.isHighlighted;
-
-						if(dataset.d3.charactersHighlighted == 0)
-							d3.selectAll("path")
-									.transition()
-									.duration(options.characters.highlightDuration)
-									.style('opacity', options.characters.nonHighlightedOpacity);
-
-						dataset.d3.charactersHighlighted += character.d3.isHighlighted ? 1 : -1;
-
-						if(dataset.d3.charactersHighlighted == 0)
-							d3.selectAll("path")
-									.transition()
-									.duration(options.characters.highlightDuration)
-									.style('opacity', 1.0);
+						toggleCharacterHighlight(character);
 
 						d3.select(this)
 								.transition()
 								.duration(options.characters.highlightDuration)
-								.style('opacity', 1.0)
+								.style('opacity', dataset.d3.charactersHighlighted == 0 || character.d3.isHighlighted ? 1.0 : options.characters.nonHighlightedOpacity)
 								.style('stroke-width', character.d3.isHighlighted ? options.characters.highlightStrokeWidth : options.characters.strokeWidth);
+
+						d3.event.stopPropagation();
 					});
 
 			// Append the character names
