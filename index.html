@@ -19,7 +19,11 @@
 			width: 16000
 		},
 		characters: {
-			interpolation: "monotone"
+			interpolation: "monotone",
+			strokeWidth: 2,
+			highlightStrokeWidth: 6,
+			highlightDuration: 400,
+			nonHighlightedOpacity: 0.2
 		},
 		algorithm: {
 			sweepingMaxIterations: 20
@@ -122,8 +126,12 @@
 			});
 		}
 
+		dataset.d3.charactersHighlighted = 0;
+
 		// Draw the story lines
 		dataset.characters.forEach(function (character) {
+			character.d3.highlighted = false;
+
 			var line_function = d3.svg.line().interpolate(options.characters.interpolation)
 					.x(function (d) { return d.x; })
 					.y(function (d) { return d.y; });
@@ -133,27 +141,29 @@
 					.attr("xlink:href", "character_" + character.id)
 					.attr("fill", "none")
 					.attr("stroke", character.d3.color)
-					.attr("stroke-width", 2)
-					.on("mouseover", function(d) {
-						d3.selectAll("path")
-								.transition()
-								.duration(100)
-								.style('opacity', 0.2);
+					.attr("stroke-width", options.characters.strokeWidth)
+					.on("click", function() {
+						character.d3.isHighlighted = !character.d3.isHighlighted;
+
+						if(dataset.d3.charactersHighlighted == 0)
+							d3.selectAll("path")
+									.transition()
+									.duration(options.characters.highlightDuration)
+									.style('opacity', options.characters.nonHighlightedOpacity);
+
+						dataset.d3.charactersHighlighted += character.d3.isHighlighted ? 1 : -1;
+
+						if(dataset.d3.charactersHighlighted == 0)
+							d3.selectAll("path")
+									.transition()
+									.duration(options.characters.highlightDuration)
+									.style('opacity', 1.0);
+
 						d3.select(this)
 								.transition()
-								.duration(100)
-								.style({'opacity' : 1, 'stroke-width' : 7});
-					})
-					.on("mouseout", function(d) {
-						d3.selectAll("path")		// get back to the initial opacity
-								.transition()
-								.duration(100)
-								.style('opacity', 1);
-
-						d3.select(this)				// get back to the initial thickness
-								.transition()
-								.duration(100)
-								.style("stroke-width", 2);
+								.duration(options.characters.highlightDuration)
+								.style('opacity', 1.0)
+								.style('stroke-width', character.d3.isHighlighted ? options.characters.highlightStrokeWidth : options.characters.strokeWidth);
 					});
 
 			// Append the character names
