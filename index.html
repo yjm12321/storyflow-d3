@@ -43,6 +43,70 @@
 
 		dataset.d3 = { time: [] };
 
+		function shuffle(o){
+			for(var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+			return o;
+		}
+
+		var enforceHierarchy = function(moment, charactersMapping, performSorting) {
+			// Place the locations with the highest number of characters first
+//			console.log("  Enforcing: ", moment);
+
+			moment.locations.sort(function(x, y) {
+				return x.sessions.map(function(x) { return dataset.sessions[x].members.length; })
+								.reduce(function(x, y) { return x + y; }) <
+						y.sessions.map(function(y) { return dataset.sessions[y].members.length; })
+								.reduce(function(x, y) { return x + y; });
+			});
+
+			// Sort the sessions
+			if(performSorting != undefined && performSorting == true)
+				moment.locations.forEach(function(location) {
+					location.sessions.sort(function(x, y) {
+						var xWeight = dataset.sessions[x].members
+										.map(function(x) { return charactersMapping[moment.sortedCharacters.indexOf(x)]; })
+										.reduce(function(x, y) { return x + y; })
+								/ dataset.sessions[x].members.length;
+
+						var yWeight = dataset.sessions[y].members
+										.map(function(y) { return charactersMapping[moment.sortedCharacters.indexOf(y)]; })
+										.reduce(function(x, y) { return x + y; })
+								/ dataset.sessions[y].members.length;
+
+						console.log("  Weight session #", x, ": ", xWeight, ", weight session #", y, ": ", yWeight);
+
+						return xWeight > yWeight;
+					});
+				});
+
+			var q = moment.locations.map(function(x) {
+				return x.sessions.map(function(x) {
+					var members = dataset.sessions[x].members;
+
+					if(performSorting != undefined && performSorting == true)
+						members.sort(function (x, y) { return charactersMapping[moment.sortedCharacters.indexOf(x)] > charactersMapping[moment.sortedCharacters.indexOf(y)]; });
+//					else
+//						shuffle(members);
+
+					return members;
+				})
+			});
+
+			moment.sortedCharacters = [];
+
+			q.forEach(function(l) {
+				l.forEach(function(s) {
+					s.forEach(function(c) {
+						moment.sortedCharacters.push(c);
+					})
+				})
+			});
+
+//			console.log("    Enforced: ", moment);
+		};
+
+		console.log("Building the relationship trees...");
+
 		// Construct the relationship trees (one for each time unit)
 		for(var time = timeframe.start; time < timeframe.end; ++time) {
 			var moment = dataset.d3.time[time] = { locations: [ ], sortedCharacters: [ ] };
@@ -54,22 +118,157 @@
 
 				if(session.start <= time && time < session.end) {
 					if(location == undefined)
-						location = moment.locations[session.location] = { sessions: [ ], characters: [ ] };
+						location = moment.locations[session.location] = { sessions: [ ] };
 
 					location.sessions.push(i);
-					location.characters = location.characters.concat(session.members);
 				}
 			}
 
-			// Place the locations with the highest number of characters first
-			moment.locations.sort(function(x, y) { return x.characters.length < y.characters.length; });
-
-			// Store the order of the characters explicitly
-			moment.locations.forEach(function(location) {
-				moment.sortedCharacters = moment.sortedCharacters.concat(location.characters);
-			});
+			enforceHierarchy(moment, dataset.characters.map(function(_, i, _) { return i; }), false);
 
 			// TODO: Place the other locations such that the number of crossings is minimized
+		}
+
+		console.log("Finished building the relationship trees.");
+
+		var sortMoment = function(referenceMoment, currentMoment, sortRestrictions) {
+			var computeCrossings = function(matrix) {
+				var crossings = 0;
+
+				for(var topRow = 0; topRow < referenceMoment.length - 1; ++topRow)
+					for(var bottomRow = topRow + 1; bottomRow < referenceMoment.length; ++bottomRow)
+						for(var leftColumn = 0; leftColumn < currentMoment.length - 1; ++leftColumn)
+							for(var rightColumn = leftColumn + 1; rightColumn < currentMoment.length; ++rightColumn)
+								crossings +=
+										matrix[topRow][rightColumn] *
+										matrix[bottomRow][leftColumn];
+
+				return crossings;
+			};
+
+			var columnBarycenters = [];
+			var currentMapping = currentMoment.map(function(_, i, _) { return i; });
+			var backupMapping = currentMoment.map(function(_, i, _) { return i; });
+			var matrix = [];
+
+			for(var r = 0; r < referenceMoment.length; ++r) {
+				matrix[r] = [];
+
+				for(var c = 0; c < currentMoment.length; ++c)
+					matrix[r][c] = referenceMoment[r] == currentMoment[c] ? 1 : 0;
+			}
+
+			for(c = 0; c < currentMoment.length; ++c) {
+				var weightedSum = 0;
+
+				for (r = 0; r < referenceMoment.length; ++r) {
+					weightedSum += (r + 1) * matrix[r][c];
+				}
+
+				columnBarycenters[c] = weightedSum;
+			}
+
+			var crossingsBefore = computeCrossings(matrix);
+			console.log("Before: ", crossingsBefore);
+
+			for(var restriction = 0, offset = 0; restriction < sortRestrictions.length; ++restriction) {
+				for(i = offset; i < offset + sortRestrictions[restriction]; ++i) {
+					for(var k = i + 1; k < offset + sortRestrictions[restriction]; ++k)
+						if(columnBarycenters[i] > columnBarycenters[k]) {
+							var tmp = columnBarycenters[i];
+							columnBarycenters[i] = columnBarycenters[k];
+							columnBarycenters[k] = tmp;
+
+							tmp = currentMapping[currentMapping[i]];
+							currentMapping[currentMapping[i]] = currentMapping[currentMapping[k]];
+							currentMapping[currentMapping[k]] = tmp;
+
+							for(var r = 0; r < referenceMoment.length; ++r) {
+								var tmp = matrix[r][currentMapping[i]];
+								matrix[r][currentMapping.indexOf(i)] = matrix[r][currentMapping[k]];
+								matrix[r][currentMapping.indexOf(k)] = tmp;
+							}
+
+//							console.log(matrix);
+						}
+				}
+
+				offset += sortRestrictions[restriction];
+			}
+
+			var crossingsAfter = computeCrossings(matrix);
+			console.log("After: ", crossingsAfter);
+
+			if(crossingsBefore < crossingsAfter) {
+				console.error("!!!");
+				return { mapping: backupMapping, crossings: crossingsBefore };
+			}
+
+			return { mapping: currentMapping, crossings: crossingsAfter };
+		};
+
+		console.log("Starting sweeping...");
+
+//		enforceHierarchy(dataset.d3.time[1], [2, 0, 1, 4, 3, 5, 6], true);
+
+		for(var iter = 0; iter < options.algorithm.sweepingMaxIterations; ++iter) {
+			console.log(" Sweep #", iter);
+
+			for (t = timeframe.start + 1; t < timeframe.end; ++t) {
+				var referenceMoment = dataset.d3.time[t - 1];
+				var currentMoment = dataset.d3.time[t];
+
+				var sortRestrictions = currentMoment.locations.
+						map(function(x) { return x.sessions.map(function(x) { return dataset.sessions[x].members.length; }) }).
+						reduce(function(x, y) { return x.concat(y); });
+
+//				console.log("Sort restriction: ", sortRestrictions);
+
+				var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
+
+				enforceHierarchy(currentMoment, result.mapping, true);
+			}
+
+			for (t = timeframe.end - 2; t >= 0; --t) {
+				referenceMoment = dataset.d3.time[t  + 1];
+				currentMoment = dataset.d3.time[t];
+
+				var sortRestrictions = currentMoment.locations.
+						map(function(x) { return x.sessions.map(function(x) { return dataset.sessions[x].members.length; }) }).
+						reduce(function(x, y) { return x.concat(y); });
+
+//				console.log("Sort restriction: ", sortRestrictions);
+				var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
+//				console.log("Mapping: ", mapping);
+
+				enforceHierarchy(currentMoment, result.mapping, true);
+			}
+		}
+
+		referenceMoment = dataset.d3.time[timeframe.end -2];
+		currentMoment = dataset.d3.time[timeframe.end -1];
+
+		var sortRestrictions = currentMoment.locations.
+				map(function(x) { return x.sessions.map(function(x) { return dataset.sessions[x].members.length; }) }).
+				reduce(function(x, y) { return x.concat(y); });
+
+
+		var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
+
+		for (t = timeframe.start + 1; t < timeframe.end; ++t) {
+			dataset.d3.time[t].sortedCharacters.sort(function(x, y) {
+				var xIndex = currentMoment.sortedCharacters.indexOf(x);
+				var yIndex = currentMoment.sortedCharacters.indexOf(x);
+
+				if(xIndex == -1) return false;
+				if(yIndex == -1) return false;
+
+				return result.mapping[xIndex] > result.mapping[yIndex];
+			});
+
+			var oneToOneMapping = dataset.d3.time[t].sortedCharacters.map(function(_, i, _) { return i; });
+
+			enforceHierarchy(dataset.d3.time[t], oneToOneMapping, false);
 		}
 
 		/***************************************************** D3 *****************************************************/
@@ -112,7 +311,7 @@
 				var character = dataset.characters[time.sortedCharacters[i]];
 
 				if(character.d3.points == undefined)
-					character.d3.points = [ ];
+					character.d3.points = [];
 
 				character.d3.points.push({ x: horizontalScale(t), y: verticalScale(i) });
 			}
@@ -160,7 +359,7 @@
 			nameOffset: 10
 		},
 		algorithm: {
-			sweepingMaxIterations: 1
+			sweepingMaxIterations: 20
 		}
 	};
 
@@ -191,7 +390,8 @@
 			<select name="dataset" id="dataset">
 				<option value="dataset/the_matrix.json">The Matrix</option>
 				<option value="dataset/alice_in_wonderland.json">Alice in Wonderland</option>
-				<option value="dataset/star_wars.json" selected>Star Wars</option>
+				<option value="dataset/star_wars.json">Star Wars</option>
+				<option value="dataset/test.json" selected>Test</option>
 			</select>
 		</td>
 		<td>
