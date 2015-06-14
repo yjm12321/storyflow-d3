@@ -419,8 +419,19 @@
 					.attr("xlink:href", "character_" + character.id)
 					.attr("fill", "none")
 					.attr("stroke", character.d3.color)
-					.attr("stroke-width", 2);
-		});
+					.attr("stroke-width", 2)
+					.on("mouseover", mOver)
+					.on("mouseout", function(d) {
+						d3.selectAll("path")		// get back to the initial opacity
+							.transition()
+							.duration(100)
+							.style('opacity', 1);
+
+						d3.select(this)				// get back to the initial thickness
+							.transition()
+							.duration(100)
+							.style("stroke-width", 2);
+					});
 
 		// Append the character names
 		svg.selectAll("text").data(dataset.characters.map(function(x) { return x.name }))
@@ -431,7 +442,20 @@
 				.append("textPath")
 				.attr("xlink:href", function(d, i) { return "#character_" + i; })
 				.text(function(d, i) { return d; });
-	};
+	});
+	}
+	
+	// thicken the character line and blur the other characters on mouseover
+	function mOver(d) {
+	d3.selectAll("path")
+		.transition()
+		.duration(100)
+		.style('opacity', 0.2);
+    d3.select(this)
+        .transition()
+        .duration(100)
+        .style({'opacity' : 1, 'stroke-width' : 7});
+	}
 
 	var visualizeDataset = function(path, options) {
 		loadJSON(path, function(dataset) {
