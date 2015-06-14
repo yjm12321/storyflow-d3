@@ -11,35 +11,169 @@
 </head>
 <body>
 <script type="text/javascript">
-	// http://stackoverflow.com/questions/9838812/how-can-i-open-a-json-file-in-javascript-without-jquery
-	function loadJSON(path, success, error) {
-		var xhr = new XMLHttpRequest();
+	var dataset = null;
 
-		xhr.onreadystatechange = function () {
-			if (xhr.readyState === XMLHttpRequest.DONE) {
-				if (xhr.status === 200) {
-					if (success)
-						success(JSON.parse(xhr.responseText));
-				} else {
-					if (error)
-						error(xhr);
-				}
-			}
+	var options = {
+		svg: {
+			element: "#canvas",
+			height: 1000,
+			width: 16000
+		},
+		characters: {
+			interpolation: "monotone"
+		},
+		algorithm: {
+			sweepingMaxIterations: 20
+		}
+	};
+
+	$(document).ready(function() {
+		function buildDrawStoryFlow(path, options) {
+			d3.json(path, function(error, json) {
+				if(error)
+					return console.error(error);
+
+				dataset = annotateDataset(json, options);
+				drawStoryFlow(dataset, options);
+			});
 		};
 
-		xhr.open("GET", path, true);
-		xhr.send();
-	}
+		var datasetSelector = $("#dataset");
 
-	var annotateDataset = function (dataset, options) {
-		/************************************************* ALGORITHM **************************************************/
-		/********* Implementation of the algorithm presented in "StoryFlow: Tracking the Evolution of Stories" ********/
+		datasetSelector.selectmenu({
+			width: 230,
+			select: function (event, ui) {
+				buildDrawStoryFlow(ui.item.value, options);
+			}
+		});
+
+		$("#interpolation").selectmenu({
+			width: 200,
+			select: function (event, ui) {
+				options.characters.interpolation = ui.item.value;
+
+				drawStoryFlow(dataset, options);
+			}
+		});
+
+		buildDrawStoryFlow(datasetSelector.val(), options);
+	});
+
+	var drawStoryFlow = function(dataset, options) {
+		// Remove the previous SVG container
+		d3.select(options.svg.element).select("svg").remove();
+
+		// Create the SVG container
+		var svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
+
+		// Generate the colors of the characters
+		var colors = dataset.characters.length <= 10 ? d3.scale.category10() : d3.scale.category20();
+
+		// Assign each character a color
+		for(i = 0; i < dataset.characters.length; ++i) {
+			dataset.characters[i].d3 = { color: colors(i) };
+		}
+
+		// Compute the maximum number of characters in a time unit
+		var maxCharacters = dataset.d3.time.map(function(time) { return time.sortedCharacters.length; })
+				.reduce(function(x, y) { return Math.max(x, y); });
+
+		// Create various scales used to process the dataset
+		var verticalScale = d3.scale.linear()
+				.domain([0, maxCharacters])
+				.range([0, options.svg.height]);
 
 		// Compute the story timeframe
 		var timeframe = dataset.sessions.map(function(x) { return { start: x.start, end: x.end } })
 				.reduce(function(x, y) { return { start: Math.min(x.start, y.start), end: Math.max(x.end, y.end) } });
 
-		console.log("Timeframe: ", timeframe);
+		var horizontalScale = d3.scale.linear()
+				.domain([timeframe.start, timeframe.end])
+				.range([0, options.svg.width]);
+
+		// Compute path of each character
+		for(var t = 0; t < dataset.d3.time.length; ++t) {
+			var time = dataset.d3.time[t];
+
+			var sortRestrictions = time.locations.
+					map(function(x) { return x.sessions.map(function(x) { return dataset.sessions[x].members.length; }) }).
+					reduce(function(x, y) { return x.concat(y); });
+
+			var offset = 0;
+
+			sortRestrictions.forEach(function(restriction) {
+				var mean = 0;
+
+				for(i = 0; i < restriction; ++i) {
+					mean += verticalScale(offset + i);
+				}
+
+				mean /= restriction;
+
+				for(i = 0; i < restriction; ++i) {
+					var character = dataset.characters[time.sortedCharacters[offset + i]];
+
+					if(character.d3.points == undefined)
+						character.d3.points = [];
+
+					character.d3.points.push({ x: horizontalScale(t), y: mean + ((verticalScale(offset + i) - mean) / 3) });
+				}
+
+				offset += restriction;
+			});
+		}
+
+		// Draw the story lines
+		dataset.characters.forEach(function (character) {
+			var line_function = d3.svg.line().interpolate(options.characters.interpolation)
+					.x(function (d) { return d.x; })
+					.y(function (d) { return d.y; });
+
+			svg.append("path").attr("d", line_function(character.d3.points))
+					.attr("id", "character_" + character.id)
+					.attr("xlink:href", "character_" + character.id)
+					.attr("fill", "none")
+					.attr("stroke", character.d3.color)
+					.attr("stroke-width", 2)
+					.on("mouseover", function(d) {
+						d3.selectAll("path")
+								.transition()
+								.duration(100)
+								.style('opacity', 0.2);
+						d3.select(this)
+								.transition()
+								.duration(100)
+								.style({'opacity' : 1, 'stroke-width' : 7});
+					})
+					.on("mouseout", function(d) {
+						d3.selectAll("path")		// get back to the initial opacity
+								.transition()
+								.duration(100)
+								.style('opacity', 1);
+
+						d3.select(this)				// get back to the initial thickness
+								.transition()
+								.duration(100)
+								.style("stroke-width", 2);
+					});
+
+			// Append the character names
+			svg.selectAll("text").data(dataset.characters.map(function(x) { return x.name }))
+					.enter()
+					.append("text")
+					.attr("x", 0)
+					.attr("dy", 0)
+					.append("textPath")
+					.attr("xlink:href", function(d, i) { return "#character_" + i; })
+					.text(function(d, i) { return d; });
+		});
+	};
+
+	// (Partial) Implementation of the algorithm presented in "StoryFlow: Tracking the Evolution of Stories"
+	function annotateDataset(dataset, options) {
+		// Compute the story timeframe
+		var timeframe = dataset.sessions.map(function(x) { return { start: x.start, end: x.end } })
+				.reduce(function(x, y) { return { start: Math.min(x.start, y.start), end: Math.max(x.end, y.end) } });
 
 		dataset.d3 = { time: [] };
 
@@ -179,8 +313,6 @@
 								matrix[r][currentMapping.indexOf(i)] = matrix[r][currentMapping[k]];
 								matrix[r][currentMapping.indexOf(k)] = tmp;
 							}
-
-//							console.log(matrix);
 						}
 				}
 
@@ -203,7 +335,7 @@
 		var bestDataset = jQuery.extend(true, {}, dataset);
 
 		for(var iter = 0; iter < options.algorithm.sweepingMaxIterations; ++iter) {
-			console.log(" Sweep #", iter);
+			console.log("  Sweep #", iter);
 			var totalCrossings = 0;
 
 			// Sweep left->right
@@ -222,9 +354,9 @@
 			}
 
 			if(bestCrossings == -1 || bestCrossings > totalCrossings) {
-				console.log("Best number of crossings: ", bestCrossings);
 				bestCrossings = totalCrossings;
 				bestDataset = jQuery.extend(true, {}, dataset);
+				console.log("Best number of crossings: ", bestCrossings);
 			}
 
 			totalCrossings = 0;
@@ -272,6 +404,14 @@
 				enforceHierarchy(currentMoment, result.mapping, true);
 			}
 
+			if(bestCrossings == -1 || bestCrossings > totalCrossings) {
+				bestCrossings = totalCrossings;
+				bestDataset = jQuery.extend(true, {}, dataset);
+				console.log("Best number of crossings: ", bestCrossings);
+			}
+
+			totalCrossings = 0;
+
 			// Set the order for all time frames as the order at the first time frame
 			referenceMoment = dataset.d3.time[timeframe.start];
 			currentMoment = dataset.d3.time[timeframe.start + 1];
@@ -299,203 +439,10 @@
 
 				enforceHierarchy(dataset.d3.time[t], oneToOneMapping, false);
 			}
-
-			if(bestCrossings == -1 || bestCrossings > totalCrossings) {
-				console.log("Best number of crossings: ", bestCrossings);
-				bestCrossings = totalCrossings;
-				bestDataset = jQuery.extend(true, {}, dataset);
-			}
 		}
 
-		dataset = JSON.parse(JSON.stringify(bestDataset));
-
-//		referenceMoment = dataset.d3.time[timeframe.end -2];
-//		currentMoment = dataset.d3.time[timeframe.end -1];
-
-//		var sortRestrictions = currentMoment.locations.
-//				map(function(x) { return x.sessions.map(function(x) { return dataset.sessions[x].members.length; }) }).
-//				reduce(function(x, y) { return x.concat(y); });
-//
-//
-//		var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
-//
-//		for (t = timeframe.start + 1; t < timeframe.end; ++t) {
-//			dataset.d3.time[t].sortedCharacters.sort(function(x, y) {
-//				var xIndex = currentMoment.sortedCharacters.indexOf(x);
-//				var yIndex = currentMoment.sortedCharacters.indexOf(x);
-//
-//				if(xIndex == -1) return false;
-//				if(yIndex == -1) return false;
-//
-//				return result.mapping[xIndex] > result.mapping[yIndex];
-//			});
-//
-//			var oneToOneMapping = dataset.d3.time[t].sortedCharacters.map(function(_, i, _) { return i; });
-//
-//			enforceHierarchy(dataset.d3.time[t], oneToOneMapping, false);
-//		}
-
-		/***************************************************** D3 *****************************************************/
-
-		// Remove the previous SVG container
-		d3.select(options.svg.element).select("svg").remove();
-
-		// Create the SVG container
-		var svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
-
-		// Generate the colors of the characters
-		var colors = dataset.characters.length <= 10 ? d3.scale.category10() : d3.scale.category20(); // randomColor({count: dataset.characters.length});
-
-		// Assign each character a color
-		for(i = 0; i < dataset.characters.length; ++i) {
-			dataset.characters[i].d3 = { color: colors(i) };
-		}
-
-		// Compute the maximum number of characters in a time unit
-		var maxCharacters = dataset.d3.time.map(function(time) { return time.sortedCharacters.length; })
-				.reduce(function(x, y) { return Math.max(x, y); });
-
-
-		console.log("Maximum characters in a time unit: ", maxCharacters);
-
-		// Create various scales used to process the dataset
-		var verticalScale = d3.scale.linear()
-				.domain([0, maxCharacters])
-				.range([0, options.svg.height]);
-
-		var horizontalScale = d3.scale.linear()
-				.domain([timeframe.start, timeframe.end])
-				.range([0, options.svg.width]);
-
-		// Compute path of each character
-		for(var t = 0; t < dataset.d3.time.length; ++t) {
-			var time = dataset.d3.time[t];
-
-			var sortRestrictions = time.locations.
-					map(function(x) { return x.sessions.map(function(x) { return dataset.sessions[x].members.length; }) }).
-					reduce(function(x, y) { return x.concat(y); });
-
-			var offset = 0;
-
-			sortRestrictions.forEach(function(restriction) {
-				var mean = 0;
-
-				for(i = 0; i < restriction; ++i) {
-					mean += verticalScale(offset + i);
-				}
-
-				mean /= restriction;
-
-				for(i = 0; i < restriction; ++i) {
-					var character = dataset.characters[time.sortedCharacters[offset + i]];
-
-					if(character.d3.points == undefined)
-						character.d3.points = [];
-
-					character.d3.points.push({ x: horizontalScale(t), y: mean + ((verticalScale(offset + i) - mean) / 3) });
-				}
-
-				offset += restriction;
-			});
-
-//			for(var i = 0; i < time.sortedCharacters.length; ++i) {
-//				var character = dataset.characters[time.sortedCharacters[i]];
-//
-//				if(character.d3.points == undefined)
-//					character.d3.points = [];
-//
-//				character.d3.points.push({ x: horizontalScale(t), y: verticalScale(i) });
-//			}
-		}
-
-		// Draw the story lines
-		dataset.characters.forEach(function (character) {
-			var line_function = d3.svg.line().interpolate(options.characters.interpolation)
-					.x(function (d) { return d.x; })
-					.y(function (d) { return d.y; });
-
-			svg.append("path").attr("d", line_function(character.d3.points))
-					.attr("id", "character_" + character.id)
-					.attr("xlink:href", "character_" + character.id)
-					.attr("fill", "none")
-					.attr("stroke", character.d3.color)
-					.attr("stroke-width", 2)
-					.on("mouseover", mOver)
-					.on("mouseout", function(d) {
-						d3.selectAll("path")		// get back to the initial opacity
-							.transition()
-							.duration(100)
-							.style('opacity', 1);
-
-						d3.select(this)				// get back to the initial thickness
-							.transition()
-							.duration(100)
-							.style("stroke-width", 2);
-					});
-
-		// Append the character names
-		svg.selectAll("text").data(dataset.characters.map(function(x) { return x.name }))
-				.enter()
-				.append("text")
-				.attr("x", 0)
-				.attr("dy", 0)
-				.append("textPath")
-				.attr("xlink:href", function(d, i) { return "#character_" + i; })
-				.text(function(d, i) { return d; });
-	});
+		return bestDataset;
 	}
-	
-	// thicken the character line and blur the other characters on mouseover
-	function mOver(d) {
-	d3.selectAll("path")
-		.transition()
-		.duration(100)
-		.style('opacity', 0.2);
-    d3.select(this)
-        .transition()
-        .duration(100)
-        .style({'opacity' : 1, 'stroke-width' : 7});
-	}
-
-	var visualizeDataset = function(path, options) {
-		loadJSON(path, function(dataset) {
-			annotateDataset(dataset, options);
-		}, null);
-	};
-
-	var options = {
-		svg: {
-			element: "#canvas",
-			height: 1000,
-			width: 16000
-		},
-		characters: {
-			interpolation: "basis"
-		},
-		algorithm: {
-			sweepingMaxIterations: 20
-		}
-	};
-
-	$(document).ready(function() {
-		$("#dataset").selectmenu({
-			width: 230,
-			select: function (event, ui) {
-				visualizeDataset($("#dataset").val(), options);
-			}
-		});
-
-		$("#interpolation").selectmenu({
-			width: 200,
-			select: function (event, ui) {
-				options.characters.interpolation = ui.item.value;
-
-				visualizeDataset($("#dataset").val(), options);
-			}
-		});
-
-		visualizeDataset($("#dataset").val(), options);
-	});
 </script>
 
 <table>
@@ -505,7 +452,6 @@
 				<option value="dataset/the_matrix.json">The Matrix</option>
 				<option value="dataset/alice_in_wonderland.json">Alice in Wonderland</option>
 				<option value="dataset/star_wars.json" selected>Star Wars</option>
-				<option value="dataset/test.json">Test</option>
 			</select>
 		</td>
 		<td>
@@ -514,10 +460,10 @@
 				<option value="step">Step</option>
 				<option value="step-before">Step-before</option>
 				<option value="step-after">Step-after</option>
-				<option value="basis" selected>Basis</option>
+				<option value="basis">Basis</option>
 				<option value="bundle">Bundle</option>
 				<option value="cardinal">Cardinal</option>
-				<option value="monotone">Monotone</option>
+				<option value="monotone" selected>Monotone</option>
 			</select>
 		</td>
 	</tr>
