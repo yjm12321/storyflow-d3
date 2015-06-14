@@ -43,15 +43,8 @@
 
 		dataset.d3 = { time: [] };
 
-		function shuffle(o){
-			for(var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
-			return o;
-		}
-
 		var enforceHierarchy = function(moment, charactersMapping, performSorting) {
 			// Place the locations with the highest number of characters first
-//			console.log("  Enforcing: ", moment);
-
 			moment.locations.sort(function(x, y) {
 				return x.sessions.map(function(x) { return dataset.sessions[x].members.length; })
 								.reduce(function(x, y) { return x + y; }) <
@@ -85,8 +78,6 @@
 
 					if(performSorting != undefined && performSorting == true)
 						members.sort(function (x, y) { return charactersMapping[moment.sortedCharacters.indexOf(x)] > charactersMapping[moment.sortedCharacters.indexOf(y)]; });
-//					else
-//						shuffle(members);
 
 					return members;
 				})
@@ -101,8 +92,6 @@
 					})
 				})
 			});
-
-//			console.log("    Enforced: ", moment);
 		};
 
 		console.log("Building the relationship trees...");
@@ -169,7 +158,6 @@
 			}
 
 			var crossingsBefore = computeCrossings(matrix);
-			console.log("Before: ", crossingsBefore);
 
 			for(var restriction = 0, offset = 0; restriction < sortRestrictions.length; ++restriction) {
 				for(i = offset; i < offset + sortRestrictions[restriction]; ++i) {
@@ -196,11 +184,9 @@
 				offset += sortRestrictions[restriction];
 			}
 
-			var crossingsAfter = computeCrossings(matrix);
-			console.log("After: ", crossingsAfter);
+			var crossingsAfter = computeCrossings(matrix);;
 
 			if(crossingsBefore < crossingsAfter) {
-				console.error("!!!");
 				return { mapping: backupMapping, crossings: crossingsBefore };
 			}
 
@@ -280,11 +266,11 @@
 		var svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
 
 		// Generate the colors of the characters
-		var colors = randomColor({count: dataset.characters.length});
+		var colors = dataset.characters.length <= 10 ? d3.scale.category10() : d3.scale.category20(); // randomColor({count: dataset.characters.length});
 
 		// Assign each character a color
 		for(i = 0; i < dataset.characters.length; ++i) {
-			dataset.characters[i].d3 = { color: colors[i] };
+			dataset.characters[i].d3 = { color: colors(i) };
 		}
 
 		// Compute the maximum number of characters in a time unit
@@ -352,7 +338,7 @@
 		svg: {
 			element: "#canvas",
 			height: 696,
-			width: 1342
+			width: 13420
 		},
 		characters: {
 			interpolation: "linear",
