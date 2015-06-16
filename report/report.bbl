@@ -1,0 +1,21 @@
+\begin{thebibliography}{1}
+
+\bibitem{xkcd}
+Movie narrative chart.
+\newblock \url{http://xkcd.com/657/}.
+
+\bibitem{Narrative}
+Narrative.
+\newblock \url{https://en.wikipedia.org/wiki/Narrative}.
+
+\bibitem{website:tanahashi}
+Tanahashi's website.
+\newblock \url{http://vis.cs.ucdavis.edu/~tanahashi/storylines/}.
+
+\bibitem{tanahashi}
+Y.~Tanahashi and Kwan-Liu Ma.
+\newblock Design considerations for optimizing storyline visualizations.
+\newblock {\em IEEE Transactions on Visualization and Computer Graphics},
+  18(12):2679--2688, 2012.
+
+\end{thebibliography}

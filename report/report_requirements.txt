@@ -1,0 +1,8 @@
+The final report should contain a discussion of:
+- the analysis problem and user’s task
+- the chosen approach on a conceptual level
+- related work (what are the alternatives to visualize the same data,
+							what are other related projects that are publicly available) 
+- the implemented solution
+- limitations of the solution
+- future work and conclusion

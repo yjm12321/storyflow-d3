@@ -1,0 +1,50 @@
+This is BibTeX, Version 0.99d (TeX Live 2013/Debian)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: report.aux
+The style file: plain.bst
+Database file #1: bibliography.bib
+Warning--to sort, need author or key in Narrative
+Warning--to sort, need author or key in xkcd
+Warning--to sort, need author or key in website:tanahashi
+You've used 4 entries,
+            2118 wiz_defined-function locations,
+            516 strings with 4414 characters,
+and the built_in function-call counts, 838 in all, are:
+= -- 79
+> -- 16
+< -- 0
++ -- 8
+- -- 4
+* -- 44
+:= -- 116
+add.period$ -- 9
+call.type$ -- 4
+change.case$ -- 14
+chr.to.int$ -- 0
+cite$ -- 7
+duplicate$ -- 32
+empty$ -- 99
+format.name$ -- 4
+if$ -- 193
+int.to.chr$ -- 0
+int.to.str$ -- 4
+missing$ -- 1
+newline$ -- 20
+num.names$ -- 2
+pop$ -- 27
+preamble$ -- 1
+purify$ -- 10
+quote$ -- 0
+skip$ -- 32
+stack$ -- 0
+substring$ -- 47
+swap$ -- 4
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 16
+warning$ -- 3
+while$ -- 3
+width$ -- 5
+write$ -- 34
+(There were 3 warnings)
