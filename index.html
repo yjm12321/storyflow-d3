@@ -27,7 +27,7 @@
 			nonHighlightedOpacity: 0.2
 		},
 		algorithm: {
-			sweepingMaxIterations: 20
+			sweepingMaxIterations: 3
 		}
 	};
 
@@ -278,25 +278,7 @@
 
 		console.log("Finished building the relationship trees.");
 
-		var sortMoment = function(referenceMoment, currentMoment, sortRestrictions) {
-			// Compute the number of crossings in the given realization matrix
-			var computeCrossings = function(matrix) {
-				var crossings = 0;
-
-				for(var topRow = 0; topRow < referenceMoment.length - 1; ++topRow)
-					for(var bottomRow = topRow + 1; bottomRow < referenceMoment.length; ++bottomRow)
-						for(var leftColumn = 0; leftColumn < currentMoment.length - 1; ++leftColumn)
-							for(var rightColumn = leftColumn + 1; rightColumn < currentMoment.length; ++rightColumn)
-								crossings +=
-										matrix[topRow][rightColumn] *
-										matrix[bottomRow][leftColumn];
-
-				return crossings;
-			};
-
-			var columnBarycenters = [];
-			var currentMapping = currentMoment.map(function(_, i, _) { return i; });
-			var backupMapping = currentMoment.map(function(_, i, _) { return i; });
+		function computeRealizationMatrix(referenceMoment, currentMoment) {
 			var matrix = [];
 
 			// Compute the realization matrix
@@ -306,6 +288,30 @@
 				for(var c = 0; c < currentMoment.length; ++c)
 					matrix[r][c] = referenceMoment[r] == currentMoment[c] ? 1 : 0;
 			}
+
+			return matrix;
+		}
+
+		// Compute the number of crossings in the given realization matrix
+		var computeCrossings = function(matrix, referenceMoment, currentMoment) {
+			var crossings = 0;
+
+			for(var topRow = 0; topRow < referenceMoment.length - 1; ++topRow)
+				for(var bottomRow = topRow + 1; bottomRow < referenceMoment.length; ++bottomRow)
+					for(var leftColumn = 0; leftColumn < currentMoment.length - 1; ++leftColumn)
+						for(var rightColumn = leftColumn + 1; rightColumn < currentMoment.length; ++rightColumn)
+							crossings +=
+									matrix[topRow][rightColumn] *
+									matrix[bottomRow][leftColumn];
+
+			return crossings;
+		};
+
+		var sortMoment = function(referenceMoment, currentMoment, sortRestrictions) {
+			var columnBarycenters = [];
+			var currentMapping = currentMoment.map(function(_, i, _) { return i; });
+			var backupMapping = currentMoment.map(function(_, i, _) { return i; });
+			var matrix = computeRealizationMatrix(referenceMoment, currentMoment);
 
 			// Compute the column barycenters
 			for(c = 0; c < currentMoment.length; ++c) {
@@ -319,7 +325,7 @@
 			}
 
 			// Compute the number of crossings before sorting the columns
-			var crossingsBefore = computeCrossings(matrix);
+			var crossingsBefore = computeCrossings(matrix, referenceMoment, currentMoment);
 
 			// Sort the columns by their barycenters, while making sure that we respect the hierarchical structure
 			for(var restriction = 0, offset = 0; restriction < sortRestrictions.length; ++restriction) {
@@ -346,7 +352,7 @@
 			}
 
 			// Compute the number of crossings after column sorting
-			var crossingsAfter = computeCrossings(matrix);
+			var crossingsAfter = computeCrossings(matrix, referenceMoment, currentMoment);
 
 			if(crossingsBefore <= crossingsAfter) {
 				return { mapping: backupMapping, crossings: crossingsBefore };
@@ -379,7 +385,7 @@
 				enforceHierarchy(currentMoment, result.mapping, true);
 			}
 
-			if(bestCrossings == -1 || bestCrossings > totalCrossings) {
+			if(bestCrossings == -1 || bestCrossings >= totalCrossings) {
 				bestCrossings = totalCrossings;
 				bestDataset = jQuery.extend(true, {}, dataset);
 				console.log("Best number of crossings: ", bestCrossings);
@@ -413,7 +419,22 @@
 				var oneToOneMapping = dataset.d3.time[t].sortedCharacters.map(function(_, i, _) { return i; });
 
 				enforceHierarchy(dataset.d3.time[t], oneToOneMapping, false);
+
+				var ref = dataset.d3.time[t - 1].sortedCharacters;
+				var cur = dataset.d3.time[t].sortedCharacters;
+
+				totalCrossings += computeCrossings(computeRealizationMatrix(ref, cur), ref, cur);
 			}
+
+			// console.log("!!!", totalCrossings);
+
+			if(bestCrossings == -1 || bestCrossings >= totalCrossings) {
+				bestCrossings = totalCrossings;
+				bestDataset = jQuery.extend(true, {}, dataset);
+				console.log("Best number of crossings: ", bestCrossings);
+			}
+
+			totalCrossings = 0;
 
 			// Sweep right->left
 			for (t = timeframe.end - 2; t >= 0; --t) {
@@ -430,7 +451,7 @@
 				enforceHierarchy(currentMoment, result.mapping, true);
 			}
 
-			if(bestCrossings == -1 || bestCrossings > totalCrossings) {
+			if(bestCrossings == -1 || bestCrossings >= totalCrossings) {
 				bestCrossings = totalCrossings;
 				bestDataset = jQuery.extend(true, {}, dataset);
 				console.log("Best number of crossings: ", bestCrossings);
@@ -464,6 +485,17 @@
 				var oneToOneMapping = dataset.d3.time[t].sortedCharacters.map(function(_, i, _) { return i; });
 
 				enforceHierarchy(dataset.d3.time[t], oneToOneMapping, false);
+
+				var ref = dataset.d3.time[t - 1].sortedCharacters;
+				var cur = dataset.d3.time[t].sortedCharacters;
+
+				totalCrossings += computeCrossings(computeRealizationMatrix(ref, cur), ref, cur);
+			}
+
+			if(bestCrossings == -1 || bestCrossings >= totalCrossings) {
+				bestCrossings = totalCrossings;
+				bestDataset = jQuery.extend(true, {}, dataset);
+				console.log("Best number of crossings: ", bestCrossings);
 			}
 		}
 
