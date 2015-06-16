@@ -11,6 +11,7 @@
 <body>
 <script type="text/javascript">
 	var dataset = null;
+	var svg = null;
 
 	var options = {
 		svg: {
@@ -20,6 +21,9 @@
 		},
 		characters: {
 			interpolation: "monotone",
+			lineClass: "line",
+			nameClass: "name",
+			datasetTransitionDuration: 1000,
 			sessionCoefficient: 3,
 			strokeWidth: 4,
 			highlightStrokeWidth: 8,
@@ -32,6 +36,8 @@
 	};
 
 	$(document).ready(function() {
+		svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
+
 		function buildDrawStoryFlow(path, options) {
 			d3.json(path, function(error, json) {
 				if(error)
@@ -64,12 +70,6 @@
 	});
 
 	var drawStoryFlow = function(dataset, options) {
-		// Remove the previous SVG container
-		d3.select(options.svg.element).select("svg").remove();
-
-		// Create the SVG container
-		var svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
-
 		// Generate the colors of the characters
 		var colors = dataset.characters.length <= 10 ? d3.scale.category10() : d3.scale.category20();
 
@@ -130,7 +130,7 @@
 		function toggleCharacterHighlight(character) {
 			// Previously no characters were highlighted => fade all away
 			if(dataset.d3.charactersHighlighted == 0)
-				d3.selectAll("path")
+				d3.selectAll("." + options.characters.lineClass)
 						.transition()
 						.duration(options.characters.highlightDuration)
 						.style('opacity', options.characters.nonHighlightedOpacity)
@@ -141,7 +141,7 @@
 
 			// No characters are highlighted => unfade them
 			if(dataset.d3.charactersHighlighted == 0)
-				d3.selectAll("path")
+				d3.selectAll("." + options.characters.lineClass)
 						.transition()
 						.duration(options.characters.highlightDuration)
 						.style('opacity', 1.0)
@@ -157,42 +157,55 @@
 			})
 		});
 
-		// Draw the story lines
-		dataset.characters.forEach(function (character) {
-			character.d3.highlighted = false;
+		var line_function = d3.svg.line().interpolate(options.characters.interpolation)
+				.x(function (d) { return d.x; })
+				.y(function (d) { return d.y; });
 
-			var line_function = d3.svg.line().interpolate(options.characters.interpolation)
-					.x(function (d) { return d.x; })
-					.y(function (d) { return d.y; });
+		var lines = svg.selectAll("." + options.characters.lineClass).data(dataset.characters).attr("class", options.characters.lineClass);
 
-			svg.append("path").attr("d", line_function(character.d3.points))
-					.attr("id", "character_" + character.id)
-					.attr("xlink:href", "character_" + character.id)
+		function setCharacterLinesAttributes(lines) {
+			return lines
+					.attr("class", options.characters.lineClass)
+					.attr("id", function(d) { return d.id; })
+					.attr("xlink:href", function(d) { return d.id; })
+					.attr("d", function(d) { return line_function(d.d3.points); })
 					.attr("fill", "none")
-					.attr("stroke", character.d3.color)
+					.attr("stroke", function(d) { return d.d3.color; })
 					.attr("stroke-width", options.characters.strokeWidth)
-					.on("click", function() {
-						toggleCharacterHighlight(character);
+					.style('opacity', 1.0)
+		}
 
-						d3.select(this)
-								.transition()
-								.duration(options.characters.highlightDuration)
-								.style('opacity', dataset.d3.charactersHighlighted == 0 || character.d3.isHighlighted ? 1.0 : options.characters.nonHighlightedOpacity)
-								.style('stroke-width', character.d3.isHighlighted ? options.characters.highlightStrokeWidth : options.characters.strokeWidth);
+		setCharacterLinesAttributes(lines.transition().duration(options.characters.datasetTransitionDuration));
+		setCharacterLinesAttributes(lines.enter().append("path"))
+				.on("click", function(d) {
+					toggleCharacterHighlight(d);
 
-						d3.event.stopPropagation();
-					});
+					d3.select(this)
+							.transition()
+							.duration(options.characters.highlightDuration)
+							.style('opacity', dataset.d3.charactersHighlighted == 0 || d.d3.isHighlighted ? 1.0 : options.characters.nonHighlightedOpacity)
+							.style('stroke-width', d.d3.isHighlighted ? options.characters.highlightStrokeWidth : options.characters.strokeWidth);
 
-			// Append the character names
-			svg.selectAll("text").data(dataset.characters.map(function(x) { return x.name }))
-					.enter()
-					.append("text")
+					d3.event.stopPropagation();
+				});
+
+		lines.exit().remove();
+
+		var names = svg.selectAll("." + options.characters.nameClass).data(dataset.characters).attr("class", options.characters.nameClass);
+
+		function setCharacterNamesAttributes(names) {
+			return names
+					.attr("class", options.characters.nameClass)
 					.attr("x", 0)
 					.attr("dy", 0)
-					.append("textPath")
-					.attr("xlink:href", function(d, i) { return "#character_" + i; })
-					.text(function(d, i) { return d; });
-		});
+					.attr("xlink:href", function(d, i) { return "#" + i; })
+					.text(function(d) { return d.name; });
+		}
+
+		setCharacterNamesAttributes(names.transition().duration(options.characters.datasetTransitionDuration));
+		setCharacterNamesAttributes(names.enter().append("text").append("textPath"));
+
+		names.exit().remove();
 	};
 
 	// (Partial) Implementation of the algorithm presented in "StoryFlow: Tracking the Evolution of Stories"
