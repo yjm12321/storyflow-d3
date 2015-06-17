@@ -12,6 +12,12 @@ Narrative.
 Tanahashi's website.
 \newblock \url{http://vis.cs.ucdavis.edu/~tanahashi/storylines/}.
 
+\bibitem{liu}
+Shixia Liu, Yingcai Wu, Enxun Wei, Mengchen Liu, and Yang Liu.
+\newblock Storyflow: Tracking the evolution of stories.
+\newblock {\em IEEE Transactions on Visualization and Computer Graphics},
+  19(12):2436--2445, 2013.
+
 \bibitem{4308636}
 Kozo Sugiyama, Shojiro Tagawa, and Mitsuhiko Toda.
 \newblock Methods for visual understanding of hierarchical system structures.
