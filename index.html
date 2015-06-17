@@ -105,15 +105,16 @@
 	var drawStoryFlow = function(dataset, options) {
 		// Generate the colors of the characters
 		var colors = dataset.characters.length <= 10 ? d3.scale.category10() : d3.scale.category20();
+		var locationColors = dataset.locations.length <= 10 ? d3.scale.category10() : d3.scale.category20();
 
 		// Assign each character a color
 		for(i = 0; i < dataset.characters.length; ++i) {
 			dataset.characters[i].d3 = { color: colors(i) };
 		}
 		
-		// Assign each character a color
+		// Assign each location a color
 		for(i = 0; i < dataset.locations.length; ++i) {
-			dataset.locations[i].d3 = { color: colors(i) };
+			dataset.locations[i].d3 = { color: locationColors(i) };
 		}
 
 		// Compute the maximum number of characters in a time unit
@@ -287,6 +288,7 @@
 		svg.on("click", function() {
 			dataset.characters.forEach(function(character) {
 				if(!character.isRemoved && character.d3.isHighlighted)
+
 					toggleCharacterHighlight(character);
 			})
 		})
