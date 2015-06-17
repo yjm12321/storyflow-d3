@@ -36,6 +36,7 @@
 			highlightDuration: 400,
 			nonHighlightedOpacity: 0.2,
 			locationPadding: 10,
+			splitLength: 1000,
 			toKeep: null
 		},
 		algorithm: {
@@ -217,6 +218,21 @@
 							}
 						}
 					}
+				}
+			}
+		}
+
+		for(i = 0; i < dataset.locations.length; ++i) {
+			var location = dataset.locations[i];
+
+			for(k = 1; k < location.d3.points.length; ++k) {
+				if(location.d3.points[k].top.x - location.d3.points[k - 1].top.x > options.characters.splitLength) {
+					var newLocation = jQuery.extend(true, {}, location);
+					newLocation.d3.points = newLocation.d3.points.slice(k);
+					newLocation.id = dataset.locations.length;
+					dataset.locations.push(newLocation);
+					location.d3.points = location.d3.points.slice(0, k);
+					break;
 				}
 			}
 		}
