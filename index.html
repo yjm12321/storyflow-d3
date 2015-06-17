@@ -22,22 +22,28 @@
 			width: 16000,
 			topPadding: 30
 		},
+		animation: {
+			transitionDuration: 1000
+		},
 		characters: {
 			interpolation: "monotone",
-			lineClass: "line",
-			nameClass: "name",
-			locationClass: "location",
-			locationNameClass: "locationName",
-			datasetTransitionDuration: 1000,
+			class: "line",
+			labelClass: "name",
 			sessionCoefficient: 3,
 			strokeWidth: 4,
-			locationFontSize: "30px",
 			highlightStrokeWidth: 8,
 			highlightDuration: 400,
 			nonHighlightedOpacity: 0.2,
-			locationPadding: 10,
-			splitLength: 1000,
 			toKeep: null
+		},
+		locations: {
+			interpolation: "monotone",
+			fontSize: "30px",
+			padding: 10,
+			opacity: 0.2,
+			class: "locationPath",
+			labelClass: "locationLabel",
+			splitLength: 1000
 		},
 		algorithm: {
 			sweepingMaxIterations: 3
@@ -224,13 +230,13 @@
 
 		dataset.locations = dataset.locations.filter(function(location) {
 			return location.d3.points != undefined;
-		})
+		});
 
 		for(i = 0; i < dataset.locations.length; ++i) {
 			var location = dataset.locations[i];
 
 			for(k = 1; k < location.d3.points.length; ++k) {
-				if(location.d3.points[k].top.x - location.d3.points[k - 1].top.x > options.characters.splitLength) {
+				if(location.d3.points[k].top.x - location.d3.points[k - 1].top.x > options.locations.splitLength) {
 					var newLocation = jQuery.extend(true, {}, location);
 					newLocation.d3.points = newLocation.d3.points.slice(k);
 					newLocation.id = dataset.locations.length;
@@ -240,13 +246,11 @@
 				}
 			}
 		}
-
-		console.log(dataset.locations);
 		
 		function toggleCharacterHighlight(character) {
 			// Previously no characters were highlighted => fade all away
 			if(dataset.d3.charactersHighlighted == 0)
-				d3.selectAll("." + options.characters.lineClass)
+				d3.selectAll("." + options.characters.class)
 						.transition()
 						.duration(options.characters.highlightDuration)
 						.style('opacity', options.characters.nonHighlightedOpacity)
@@ -257,49 +261,44 @@
 
 			// No characters are highlighted => unfade them
 			if(dataset.d3.charactersHighlighted == 0)
-				d3.selectAll("." + options.characters.lineClass)
+				d3.selectAll("." + options.characters.class)
 						.transition()
 						.duration(options.characters.highlightDuration)
 						.style('opacity', 1.0)
 						.style('stroke-width', options.characters.strokeWidth);
 		}
-		console.log(dataset.d3.time[0]);
-		data = [{top:{x:10, y:10}, bottom:{x:10,y:20}}, {top:{x:15, y:20},bottom:{x:15,y:30}},{top:{x:30, y:10},bottom:{x:30,y:20}}];
-//		for(i = 1; i < 4; i++){
-//			data.push({ x : 10*i, y : 10*i});
-//		}
 
-		var area = d3.svg.area().interpolate(options.characters.interpolation)
+		var area = d3.svg.area().interpolate(options.locations.interpolation)
 		.x(function(d) { return d.top.x; })
-			.y0(function(d) { return d.bottom.y + options.characters.locationPadding})
-			.y1(function(d) { return d.top.y - options.characters.locationPadding });
+			.y0(function(d) { return d.bottom.y + options.locations.padding})
+			.y1(function(d) { return d.top.y - options.locations.padding });
 
 		function setLocationAttributes(locations){
 			return locations
-				.attr("id", function(d) { return "location" + d.id; })
-				.attr("class", options.characters.locationClass)
+				.attr("id", function(d) { return options.locations.class + d.id; })
+				.attr("class", options.locations.class)
 				.attr("d", function(d) { return area(d.d3.points); })
 				.attr("fill", function(d) { return d.d3.color; })
-				.attr("opacity", 0.2);
+				.attr("opacity", options.locations.opacity);
 		}
 
-		var locations = svg.selectAll("." + options.characters.locationClass).data(dataset.locations).attr("class", options.characters.locationClass);
-		setLocationAttributes(locations.transition().duration(options.characters.datasetTransitionDuration));
+		var locations = svg.selectAll("." + options.locations.class).data(dataset.locations).attr("class", options.locations.class);
+		setLocationAttributes(locations.transition().duration(options.animation.transitionDuration));
 		setLocationAttributes(locations.enter().append("path"));
 
 		locations.exit().remove();
 			
-			var locationNames = svg.selectAll("." + options.characters.locationNameClass).data(dataset.locations).attr("class", options.characters.locationNameClass);
+			var locationNames = svg.selectAll("." + options.locations.labelClass).data(dataset.locations).attr("class", options.locations.labelClass);
 
 		function setLocationNamesAttributes(locationNames) {
 			return locationNames
-					.attr("class", options.characters.locationNameClass)
-					.attr("xlink:href", function(d, i) { return "#location" + d.id; })
+					.attr("class", options.locations.labelClass)
+					.attr("xlink:href", function(d, i) { return "#" + options.locations.class + d.id; })
 					.text(function(d, i) { console.log(d, i); return d.name; });
 		}
 
-		setLocationNamesAttributes(locationNames.transition().duration(options.characters.datasetTransitionDuration));
-		setLocationNamesAttributes(locationNames.enter().append("text").attr("x", 50).attr("dy", 0).style("font-size",options.characters.locationFontSize).append("textPath"));
+		setLocationNamesAttributes(locationNames.transition().duration(options.animation.transitionDuration));
+		setLocationNamesAttributes(locationNames.enter().append("text").attr("x", 50).attr("dy", 0).style("font-size",options.locations.fontSize).append("textPath"));
 
 		locationNames.exit().remove();	
 		
@@ -318,21 +317,17 @@
 				character.d3.points = [];
 		});
 
-//		dataset.characters = dataset.characters.filter(function(character) {
-//			return character.isRemoved == undefined || character.isRemoved == false;
-//		});
-
 		var line_function = d3.svg.line().interpolate(options.characters.interpolation)
 				.x(function (d) { return d.x; })
 				.y(function (d) { return d.y; });
 
-		var lines = svg.selectAll("." + options.characters.lineClass).data(dataset.characters).attr("class", options.characters.lineClass);
+		var lines = svg.selectAll("." + options.characters.class).data(dataset.characters).attr("class", options.characters.class);
 		
 		function setCharacterLinesAttributes(lines) {
 			return lines
-					.attr("class", options.characters.lineClass)
-					.attr("id", function(d) { return d.id; })
-					.attr("xlink:href", function(d) { return d.id; })
+					.attr("class", options.characters.class)
+					.attr("id", function(d) { return options.characters.class + d.id; })
+					.attr("xlink:href", function(d) { return options.characters.class + d.id; })
 					.attr("d", function(d) { return line_function(d.d3.points); })
 					.attr("fill", "none")
 					.attr("stroke", function(d) { return d.d3.color; })
@@ -340,7 +335,7 @@
 					.style('opacity', 1.0)
 		}
 
-		setCharacterLinesAttributes(lines.transition().duration(options.characters.datasetTransitionDuration));
+		setCharacterLinesAttributes(lines.transition().duration(options.animation.transitionDuration));
 		setCharacterLinesAttributes(lines.enter().append("path"))
 				.on("click", function(d) {
 					toggleCharacterHighlight(d);
@@ -356,18 +351,18 @@
 
 		lines.exit().remove();
 
-		var names = svg.selectAll("." + options.characters.nameClass).data(dataset.characters).attr("class", options.characters.nameClass);
+		var names = svg.selectAll("." + options.characters.labelClass).data(dataset.characters).attr("class", options.characters.labelClass);
 
 		function setCharacterNamesAttributes(names) {
 			return names
-					.attr("class", options.characters.nameClass)
+					.attr("class", options.characters.labelClass)
 					.attr("x", 0)
 					.attr("dy", 0)
-					.attr("xlink:href", function(d, i) { return "#" + i; })
-					.text(function(d, i) { console.log(d, i); return d.name; });
+					.attr("xlink:href", function(d) { return "#" + options.characters.class + d.id; })
+					.text(function(d) { return d.name; });
 		}
 
-		setCharacterNamesAttributes(names.transition().duration(options.characters.datasetTransitionDuration));
+		setCharacterNamesAttributes(names.transition().duration(options.animation.transitionDuration));
 		setCharacterNamesAttributes(names.enter().append("text").append("textPath"));
 
 		names.exit().remove();
@@ -476,8 +471,6 @@
 					return i;
 				}), false);
 			}
-
-			// TODO: Place the other locations such that the number of crossings is minimized
 		}
 
 		console.log("Finished building the relationship trees.");
