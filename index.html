@@ -20,16 +20,18 @@
 			element: "#canvas",
 			height: 1000,
 			width: 16000,
-			topPadding: 16
+			topPadding: 30
 		},
 		characters: {
 			interpolation: "monotone",
 			lineClass: "line",
 			nameClass: "name",
 			locationClass: "location",
+			locationNameClass: "locationName",
 			datasetTransitionDuration: 1000,
 			sessionCoefficient: 3,
 			strokeWidth: 4,
+			locationFontSize: "30px",
 			highlightStrokeWidth: 8,
 			highlightDuration: 400,
 			nonHighlightedOpacity: 0.2,
@@ -253,6 +255,7 @@
 
 		function setLocationAttributes(locations){
 			return locations
+				.attr("id", function(d) { return "location" + d.id; })
 				.attr("class", options.characters.locationClass)
 				.attr("d", function(d) { return area(d.d3.points); })
 				.attr("fill", function(d) { return d.d3.color; })
@@ -265,6 +268,19 @@
 		
 		locations.exit().remove();
 			
+			var locationNames = svg.selectAll("." + options.characters.locationNameClass).data(dataset.locations).attr("class", options.characters.locationNameClass);
+
+		function setLocationNamesAttributes(locationNames) {
+			return locationNames
+					.attr("class", options.characters.locationNameClass)
+					.attr("xlink:href", function(d, i) { return "#location" + d.id; })
+					.text(function(d, i) { console.log(d, i); return d.name; });
+		}
+
+		setLocationNamesAttributes(locationNames.transition().duration(options.characters.datasetTransitionDuration));
+		setLocationNamesAttributes(locationNames.enter().append("text").attr("x", 50).attr("dy", 0).style("font-size",options.characters.locationFontSize).append("textPath"));
+
+		locationNames.exit().remove();	
 		
 		dataset.d3.charactersHighlighted = 0;
 
