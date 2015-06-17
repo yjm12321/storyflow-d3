@@ -29,7 +29,9 @@
 			interpolation: "monotone",
 			class: "line",
 			labelClass: "name",
-			sessionCoefficient: 3,
+			labelX: 4,
+			labelDy: -4,
+			sessionCoefficient: 2,
 			strokeWidth: 4,
 			highlightStrokeWidth: 8,
 			highlightDuration: 400,
@@ -39,11 +41,13 @@
 		locations: {
 			interpolation: "monotone",
 			fontSize: "30px",
-			padding: 10,
+			labelX: 30,
+			labelDy: -10,
+			padding: 20,
 			opacity: 0.2,
 			class: "locationPath",
 			labelClass: "locationLabel",
-			splitLength: 1000
+			splitLength: 400
 		},
 		algorithm: {
 			sweepingMaxIterations: 3
@@ -91,6 +95,7 @@
 			width: 200,
 			select: function (event, ui) {
 				options.characters.interpolation = ui.item.value;
+				options.locations.interpolation = options.characters.interpolation;
 
 				drawStoryFlow(dataset, options);
 			}
@@ -106,8 +111,40 @@
 			buildDrawStoryFlow(datasetSelector.val(), options);
 		});
 
+		$(window).scroll(function() {
+			var horizontal = $(document).scrollLeft();
+//			console.log(horizontal);
+			updateLabels(horizontal);
+		});
+
 		buildDrawStoryFlow(datasetSelector.val(), options);
 	});
+
+	function updateLabels(horizontalOffset) {
+//		console.log(horizontalOffset);
+//
+//		dataset.characters.forEach(function(character) {
+//			character.nameOffset = horizontalOffset;
+//		});
+//
+//		d3.selectAll("." + "qqq").remove();
+//
+//		var names = svg.selectAll("." + "qqq").data(dataset.characters).attr("class", "qqq");
+//
+//		function setCharacterNamesAttributes(names) {
+//			return names
+//					.attr("class", "qqq")
+//					.attr("dy", 0)
+//					.attr("x", horizontalOffset)
+//					.attr("xlink:href", function(d) { return "#" + options.characters.class + d.id; })
+//					.text(function(d) { return "3232"; });
+//		}
+//
+//		setCharacterNamesAttributes(names.transition().duration(options.animation.transitionDuration));
+//		setCharacterNamesAttributes(names.enter().append("text").attr("x", horizontalOffset).append("textPath"));
+//
+//		names.exit().remove();
+	}
 
 	var drawStoryFlow = function(dataset, options) {
 		// Generate the colors of the characters
@@ -298,7 +335,7 @@
 		}
 
 		setLocationNamesAttributes(locationNames.transition().duration(options.animation.transitionDuration));
-		setLocationNamesAttributes(locationNames.enter().append("text").attr("x", 50).attr("dy", 0).style("font-size",options.locations.fontSize).append("textPath"));
+		setLocationNamesAttributes(locationNames.enter().append("text").attr("x", options.locations.labelX).attr("dy", options.locations.labelDy).style("font-size",options.locations.fontSize).append("textPath"));
 
 		locationNames.exit().remove();	
 		
@@ -356,14 +393,13 @@
 		function setCharacterNamesAttributes(names) {
 			return names
 					.attr("class", options.characters.labelClass)
-					.attr("x", 0)
-					.attr("dy", 0)
 					.attr("xlink:href", function(d) { return "#" + options.characters.class + d.id; })
 					.text(function(d) { return d.name; });
 		}
 
 		setCharacterNamesAttributes(names.transition().duration(options.animation.transitionDuration));
-		setCharacterNamesAttributes(names.enter().append("text").append("textPath"));
+		setCharacterNamesAttributes(names.enter().append("text").attr("x", options.characters.labelX)
+				.attr("dy", options.characters.labelDy).append("textPath"));
 
 		names.exit().remove();
 	};
