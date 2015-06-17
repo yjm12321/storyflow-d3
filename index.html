@@ -1,126 +1,128 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/html">
 <head lang="en">
-	<meta charset="UTF-8">
-	<title>StoryFlow: Tracking the Evolution of Stories</title>
-	<link rel="stylesheet" type="text/css" href="lib/jquery-ui-themes-1.11.4/themes/flick/jquery-ui.min.css"/>
-	<link rel="stylesheet" type="text/css" href="lib/jquery.sumoselect/sumoselect.css"/>
-	<script type="text/javascript" src="lib/d3.v3.js"></script>
-	<script type="text/javascript" src="lib/jquery-ui-1.11.4/external/jquery/jquery.js"></script>
-	<script type="text/javascript" src="lib/jquery-ui-1.11.4/jquery-ui.min.js"></script>
-	<script type="text/javascript" src="lib/jquery.sumoselect/jquery.sumoselect.js"></script>
+    <meta charset="UTF-8">
+    <title>StoryFlow: Tracking the Evolution of Stories</title>
+    <link rel="stylesheet" type="text/css" href="lib/jquery-ui-themes-1.11.4/themes/flick/jquery-ui.min.css"/>
+    <link rel="stylesheet" type="text/css" href="lib/jquery.sumoselect/sumoselect.css"/>
+    <script type="text/javascript" src="lib/d3.v3.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui-1.11.4/external/jquery/jquery.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui-1.11.4/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="lib/jquery.sumoselect/jquery.sumoselect.js"></script>
 </head>
 <body>
 <script type="text/javascript">
-	var dataset = null;
-	var svg = null;
+    var dataset = null;
+    var svg = null;
 
-	var options = {
-		svg: {
-			element: "#canvas",
-			height: 1000,
-			width: 16000,
-			topPadding: 30
-		},
-		animation: {
-			transitionDuration: 1000
-		},
-		characters: {
-			interpolation: "monotone",
-			class: "line",
-			labelClass: "name",
-			labelX: 4,
-			labelDy: -4,
-			sessionCoefficient: 2,
-			strokeWidth: 4,
-			highlightStrokeWidth: 8,
-			highlightDuration: 400,
-			nonHighlightedOpacity: 0.2,
-			toKeep: null
-		},
-		locations: {
-			interpolation: "monotone",
-			fontSize: "30px",
-			labelX: 30,
-			labelDy: -10,
-			padding: 20,
-			opacity: 0.2,
-			class: "locationPath",
-			labelClass: "locationLabel",
-			splitLength: 400
-		},
-		algorithm: {
-			sweepingMaxIterations: 3
-		}
-	};
+    var options = {
+        svg: {
+            element: "#canvas",
+            height: 1000,
+            width: 16000,
+            topPadding: 30
+        },
+        animation: {
+            transitionDuration: 1000
+        },
+        characters: {
+            interpolation: "monotone",
+            class: "line",
+            labelClass: "name",
+            labelX: 4,
+            labelDy: -4,
+            sessionCoefficient: 2,
+            strokeWidth: 4,
+            highlightStrokeWidth: 8,
+            highlightDuration: 400,
+            nonHighlightedOpacity: 0.2,
+            toKeep: null
+        },
+        locations: {
+            interpolation: "monotone",
+            fontSize: "30px",
+            labelX: 30,
+            labelDy: -10,
+            padding: 20,
+            opacity: 0.2,
+            class: "locationPath",
+            labelClass: "locationLabel",
+            splitLength: 400
+        },
+        algorithm: {
+            sweepingMaxIterations: 3
+        }
+    };
 
-	$(document).ready(function() {
-		svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
+    $(document).ready(function () {
+        svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
 
-		function buildDrawStoryFlow(path, options) {
-			d3.json(path, function(error, json) {
-				if(error)
-					return console.error(error);
+        function buildDrawStoryFlow(path, options) {
+            d3.json(path, function (error, json) {
+                if (error)
+                    return console.error(error);
 
-				dataset = annotateDataset(json, options);
+                dataset = annotateDataset(json, options);
 
-				if(options.characters.toKeep == null) {
-					$('#characters').empty();
-					$('#characters')[0].sumo.reload();
-					options.characters.toKeep = dataset.characters.map(function(character) { return character.id });
+                if (options.characters.toKeep == null) {
+                    $('#characters').empty();
+                    $('#characters')[0].sumo.reload();
+                    options.characters.toKeep = dataset.characters.map(function (character) {
+                        return character.id
+                    });
 
-					dataset.characters.forEach(function (character) {
-						$("#characters")[0].sumo.add(character.id, character.name);
-					});
+                    dataset.characters.forEach(function (character) {
+                        $("#characters")[0].sumo.add(character.id, character.name);
+                    });
 
-					$("#characters")[0].sumo.selectAll();
-				}
+                    $("#characters")[0].sumo.selectAll();
+                }
 
-				drawStoryFlow(dataset, options);
-			});
-		};
+                drawStoryFlow(dataset, options);
+            });
+        };
 
-		var datasetSelector = $("#dataset");
+        var datasetSelector = $("#dataset");
 
-		datasetSelector.selectmenu({
-			width: 230,
-			select: function (event, ui) {
-				options.characters.toKeep = null;
+        datasetSelector.selectmenu({
+            width: 230,
+            select: function (event, ui) {
+                options.characters.toKeep = null;
 
-				buildDrawStoryFlow(ui.item.value, options);
-			}
-		});
+                buildDrawStoryFlow(ui.item.value, options);
+            }
+        });
 
-		$("#interpolation").selectmenu({
-			width: 200,
-			select: function (event, ui) {
-				options.characters.interpolation = ui.item.value;
-				options.locations.interpolation = options.characters.interpolation;
+        $("#interpolation").selectmenu({
+            width: 200,
+            select: function (event, ui) {
+                options.characters.interpolation = ui.item.value;
+                options.locations.interpolation  = options.characters.interpolation;
 
-				drawStoryFlow(dataset, options);
-			}
-		});
+                drawStoryFlow(dataset, options);
+            }
+        });
 
-		$("#characters").SumoSelect({
-			placeholder: "Characters"
-		});
+        $("#characters").SumoSelect({
+            placeholder: "Characters"
+        });
 
-		$("#characters").change(function() {
-			options.characters.toKeep = $("#characters").val();
+        $("#characters").change(function () {
+            options.characters.toKeep = $("#characters").val();
 
-			buildDrawStoryFlow(datasetSelector.val(), options);
-		});
+            buildDrawStoryFlow(datasetSelector.val(), options);
+        });
 
-		$(window).scroll(function() {
-			var horizontal = $(document).scrollLeft();
+        $(window).scroll(function () {
+            var horizontal = $(document).scrollLeft();
 //			console.log(horizontal);
-			updateLabels(horizontal);
-		});
+            updateLabels(horizontal);
+        });
 
-		buildDrawStoryFlow(datasetSelector.val(), options);
-	});
+        buildDrawStoryFlow(datasetSelector.val(), options);
+    });
 
-	function updateLabels(horizontalOffset) {
+    function updateLabels(horizontalOffset) {
 //		console.log(horizontalOffset);
 //
 //		dataset.characters.forEach(function(character) {
@@ -144,623 +146,723 @@
 //		setCharacterNamesAttributes(names.enter().append("text").attr("x", horizontalOffset).append("textPath"));
 //
 //		names.exit().remove();
-	}
+    }
 
-	var drawStoryFlow = function(dataset, options) {
-		// Generate the colors of the characters
-		var colors = dataset.characters.length <= 10 ? d3.scale.category10() : d3.scale.category20();
-		var locationColors = dataset.locations.length <= 10 ? d3.scale.category10() : d3.scale.category20();
+    var drawStoryFlow = function (dataset, options) {
+        // Generate the colors of the characters
+        var colors         = dataset.characters.length <= 10 ? d3.scale.category10() : d3.scale.category20();
+        var locationColors = dataset.locations.length <= 10 ? d3.scale.category10() : d3.scale.category20();
 
-		// Assign each character a color
-		for(i = 0; i < dataset.characters.length; ++i) {
-			dataset.characters[i].d3 = { color: colors(i) };
-		}
-		
-		// Assign each location a color
-		for(i = 0; i < dataset.locations.length; ++i) {
-			dataset.locations[i].d3 = { color: locationColors(i) };
-		}
+        // Assign each character a color
+        for (i = 0; i < dataset.characters.length; ++i) {
+            dataset.characters[i].d3 = {color: colors(i)};
+        }
 
-		// Compute the maximum number of characters in a time unit
-		var maxCharacters = dataset.d3.time.map(function(time) { return time.sortedCharacters.length; })
-				.reduce(function(x, y) { return Math.max(x, y); });
+        // Assign each location a color
+        for (i = 0; i < dataset.locations.length; ++i) {
+            dataset.locations[i].d3 = {color: locationColors(i)};
+        }
 
-		// Create various scales used to process the dataset
-		var verticalScale = d3.scale.linear()
-				.domain([0, maxCharacters])
-				.range([options.svg.topPadding, options.svg.height]);
+        // Compute the maximum number of characters in a time unit
+        var maxCharacters = dataset.d3.time.map(function (time) {
+            return time.sortedCharacters.length;
+        })
+                .reduce(function (x, y) {
+                    return Math.max(x, y);
+                });
 
-		var horizontalScale = d3.scale.linear()
-				.domain([0, dataset.d3.time.length])
-				.range([0, options.svg.width]);
+        // Create various scales used to process the dataset
+        var verticalScale = d3.scale.linear()
+                .domain([0, maxCharacters])
+                .range([options.svg.topPadding, options.svg.height]);
 
-		// Compute path of each character
-		for(var t = 0; t < dataset.d3.time.length; ++t) {
-			var time = dataset.d3.time[t];
+        var horizontalScale = d3.scale.linear()
+                .domain([0, dataset.d3.time.length])
+                .range([0, options.svg.width]);
 
-			var sortRestrictions = time.locations.
-					map(function(x) { return x.sessions.map(function(x) { return dataset.sessions[x].members.length; }) }).
-					reduce(function(x, y) { return x.concat(y); });
+        // Compute path of each character
+        for (var t = 0; t < dataset.d3.time.length; ++t) {
+            var time = dataset.d3.time[t];
 
-			var offset = 0;
+            var sortRestrictions = time.locations.
+                    map(function (x) {
+                        return x.sessions.map(function (x) {
+                            return dataset.sessions[x].members.length;
+                        })
+                    }).
+                    reduce(function (x, y) {
+                        return x.concat(y);
+                    });
 
-			sortRestrictions.forEach(function(restriction) {
-				var mean = 0;
+            var offset = 0;
 
-				for(i = 0; i < restriction; ++i) {
-					mean += verticalScale(offset + i);
-				}
+            sortRestrictions.forEach(function (restriction) {
+                var mean = 0;
 
-				mean /= restriction;
+                for (i = 0; i < restriction; ++i) {
+                    mean += verticalScale(offset + i);
+                }
 
-				for(i = 0; i < restriction; ++i) {
-					var character = dataset.characters.filter(function(character) {
-						return character.id == time.sortedCharacters[offset + i];
-					})[0];
+                mean /= restriction;
 
-					if(character.isRemoved)
-						continue;
+                for (i = 0; i < restriction; ++i) {
+                    var character = dataset.characters.filter(function (character) {
+                        return character.id == time.sortedCharacters[offset + i];
+                    })[0];
 
-					if(character.d3.points == undefined)
-						character.d3.points = [];
+                    if (character.isRemoved)
+                        continue;
 
-					character.d3.points.push({ x: horizontalScale(t), y: mean + ((verticalScale(offset + i) - mean) / options.characters.sessionCoefficient) });
-				}
+                    if (character.d3.points == undefined)
+                        character.d3.points = [];
 
-				offset += restriction;
-			});
-		}
+                    character.d3.points.push({
+                        x: horizontalScale(t),
+                        y: mean + ((verticalScale(offset + i) - mean) / options.characters.sessionCoefficient)
+                    });
+                }
 
-		for(var t = 0; t < dataset.d3.time.length; ++t) {
-			var time = dataset.d3.time[t];
-			
-			for(i = 0; i < time.locations.length; ++i) {
-				var sessions = time.locations[i].sessions;
-				
-				for(k = 0; k < sessions.length; ++k) {
-					var sessionId = sessions[k];
-					var session = dataset.sessions[sessionId];
-					
-					var locationId = session.location;
-					var location = dataset.locations[locationId];
-					
-					for(var h = 0; h < session.members.length; ++h) {
-						var characterId = session.members[h];
-						var character = dataset.characters.filter(function(character) {
-							return character.id == characterId;
-						})[0];
-						
-						if(location.d3.points == undefined)
-							location.d3.points = [];
-						
-						for(var o = 0; o < character.d3.points.length; ++o) {
-							var characterPoint = character.d3.points[o];
-							
-							if(characterPoint.x != horizontalScale(t))
-								continue;
-							
-							if(location.d3.points.length == 0)
-								location.d3.points.push({
-										top: characterPoint,
-										bottom: characterPoint
-									});
-							else {
-								var lastPoint = location.d3.points[location.d3.points.length - 1];
-								if(lastPoint.top.x == characterPoint.x) {
-									if(lastPoint.top.y > characterPoint.y) {
-										location.d3.points[location.d3.points.length - 1].top = characterPoint;
-									} else if(lastPoint.bottom.y < characterPoint.y) {
-										location.d3.points[location.d3.points.length - 1].bottom = characterPoint;
-									}
-								} else {
-									location.d3.points.push({
-										top: characterPoint,
-										bottom: characterPoint
-									});
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+                offset += restriction;
+            });
+        }
 
-		dataset.locations = dataset.locations.filter(function(location) {
-			return location.d3.points != undefined;
-		});
+        for (var t = 0; t < dataset.d3.time.length; ++t) {
+            var time = dataset.d3.time[t];
 
-		for(i = 0; i < dataset.locations.length; ++i) {
-			var location = dataset.locations[i];
+            for (i = 0; i < time.locations.length; ++i) {
+                var sessions = time.locations[i].sessions;
 
-			for(k = 1; k < location.d3.points.length; ++k) {
-				if(location.d3.points[k].top.x - location.d3.points[k - 1].top.x > options.locations.splitLength) {
-					var newLocation = jQuery.extend(true, {}, location);
-					newLocation.d3.points = newLocation.d3.points.slice(k);
-					newLocation.id = dataset.locations.length;
-					dataset.locations.push(newLocation);
-					location.d3.points = location.d3.points.slice(0, k);
-					break;
-				}
-			}
-		}
-		
-		function toggleCharacterHighlight(character) {
-			// Previously no characters were highlighted => fade all away
-			if(dataset.d3.charactersHighlighted == 0)
-				d3.selectAll("." + options.characters.class)
-						.transition()
-						.duration(options.characters.highlightDuration)
-						.style('opacity', options.characters.nonHighlightedOpacity)
-						.style('stroke-width', options.characters.strokeWidth);
+                for (k = 0; k < sessions.length; ++k) {
+                    var sessionId = sessions[k];
+                    var session   = dataset.sessions[sessionId];
 
-			character.d3.isHighlighted = !character.d3.isHighlighted;
-			dataset.d3.charactersHighlighted += character.d3.isHighlighted ? 1 : -1;
+                    var locationId = session.location;
+                    var location   = dataset.locations[locationId];
 
-			// No characters are highlighted => unfade them
-			if(dataset.d3.charactersHighlighted == 0)
-				d3.selectAll("." + options.characters.class)
-						.transition()
-						.duration(options.characters.highlightDuration)
-						.style('opacity', 1.0)
-						.style('stroke-width', options.characters.strokeWidth);
-		}
+                    for (var h = 0; h < session.members.length; ++h) {
+                        var characterId = session.members[h];
+                        var character   = dataset.characters.filter(function (character) {
+                            return character.id == characterId;
+                        })[0];
 
-		var area = d3.svg.area().interpolate(options.locations.interpolation)
-		.x(function(d) { return d.top.x; })
-			.y0(function(d) { return d.bottom.y + options.locations.padding})
-			.y1(function(d) { return d.top.y - options.locations.padding });
+                        if (location.d3.points == undefined)
+                            location.d3.points = [];
 
-		function setLocationAttributes(locations){
-			return locations
-				.attr("id", function(d) { return options.locations.class + d.id; })
-				.attr("class", options.locations.class)
-				.attr("d", function(d) { return area(d.d3.points); })
-				.attr("fill", function(d) { return d.d3.color; })
-				.attr("opacity", options.locations.opacity);
-		}
+                        for (var o = 0; o < character.d3.points.length; ++o) {
+                            var characterPoint = character.d3.points[o];
 
-		var locations = svg.selectAll("." + options.locations.class).data(dataset.locations).attr("class", options.locations.class);
-		setLocationAttributes(locations.transition().duration(options.animation.transitionDuration));
-		setLocationAttributes(locations.enter().append("path"));
+                            if (characterPoint.x != horizontalScale(t))
+                                continue;
 
-		locations.exit().remove();
-			
-			var locationNames = svg.selectAll("." + options.locations.labelClass).data(dataset.locations).attr("class", options.locations.labelClass);
+                            if (location.d3.points.length == 0)
+                                location.d3.points.push({
+                                    top: characterPoint,
+                                    bottom: characterPoint
+                                });
+                            else {
+                                var lastPoint = location.d3.points[location.d3.points.length - 1];
+                                if (lastPoint.top.x == characterPoint.x) {
+                                    if (lastPoint.top.y > characterPoint.y) {
+                                        location.d3.points[location.d3.points.length - 1].top = characterPoint;
+                                    } else if (lastPoint.bottom.y < characterPoint.y) {
+                                        location.d3.points[location.d3.points.length - 1].bottom = characterPoint;
+                                    }
+                                } else {
+                                    location.d3.points.push({
+                                        top: characterPoint,
+                                        bottom: characterPoint
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-		function setLocationNamesAttributes(locationNames) {
-			return locationNames
-					.attr("class", options.locations.labelClass)
-					.attr("xlink:href", function(d, i) { return "#" + options.locations.class + d.id; })
-					.text(function(d, i) { console.log(d, i); return d.name; });
-		}
+        dataset.locations = dataset.locations.filter(function (location) {
+            return location.d3.points != undefined;
+        });
 
-		setLocationNamesAttributes(locationNames.transition().duration(options.animation.transitionDuration));
-		setLocationNamesAttributes(locationNames.enter().append("text").attr("x", options.locations.labelX).attr("dy", options.locations.labelDy).style("font-size",options.locations.fontSize).append("textPath"));
+        for (i = 0; i < dataset.locations.length; ++i) {
+            var location = dataset.locations[i];
 
-		locationNames.exit().remove();	
-		
-		dataset.d3.charactersHighlighted = 0;
+            for (k = 1; k < location.d3.points.length; ++k) {
+                if (location.d3.points[k].top.x - location.d3.points[k - 1].top.x > options.locations.splitLength) {
+                    var newLocation       = jQuery.extend(true, {}, location);
+                    newLocation.d3.points = newLocation.d3.points.slice(k);
+                    newLocation.id        = dataset.locations.length;
+                    dataset.locations.push(newLocation);
+                    location.d3.points    = location.d3.points.slice(0, k);
+                    break;
+                }
+            }
+        }
 
-		svg.on("click", function() {
-			dataset.characters.forEach(function(character) {
-				if(!character.isRemoved && character.d3.isHighlighted)
+        function toggleCharacterHighlight(character) {
+            // Previously no characters were highlighted => fade all away
+            if (dataset.d3.charactersHighlighted == 0)
+                d3.selectAll("." + options.characters.class)
+                        .transition()
+                        .duration(options.characters.highlightDuration)
+                        .style('opacity', options.characters.nonHighlightedOpacity)
+                        .style('stroke-width', options.characters.strokeWidth);
 
-					toggleCharacterHighlight(character);
-			})
-		})
+            character.d3.isHighlighted = !character.d3.isHighlighted;
+            dataset.d3.charactersHighlighted += character.d3.isHighlighted ? 1 : -1;
 
-		dataset.characters.forEach(function(character) {
-			if(character.isRemoved)
-				character.d3.points = [];
-		});
+            // No characters are highlighted => unfade them
+            if (dataset.d3.charactersHighlighted == 0)
+                d3.selectAll("." + options.characters.class)
+                        .transition()
+                        .duration(options.characters.highlightDuration)
+                        .style('opacity', 1.0)
+                        .style('stroke-width', options.characters.strokeWidth);
+        }
 
-		var line_function = d3.svg.line().interpolate(options.characters.interpolation)
-				.x(function (d) { return d.x; })
-				.y(function (d) { return d.y; });
+        var area = d3.svg.area().interpolate(options.locations.interpolation)
+                .x(function (d) {
+                    return d.top.x;
+                })
+                .y0(function (d) {
+                    return d.bottom.y + options.locations.padding
+                })
+                .y1(function (d) {
+                    return d.top.y - options.locations.padding
+                });
 
-		var lines = svg.selectAll("." + options.characters.class).data(dataset.characters).attr("class", options.characters.class);
-		
-		function setCharacterLinesAttributes(lines) {
-			return lines
-					.attr("class", options.characters.class)
-					.attr("id", function(d) { return options.characters.class + d.id; })
-					.attr("xlink:href", function(d) { return options.characters.class + d.id; })
-					.attr("d", function(d) { return line_function(d.d3.points); })
-					.attr("fill", "none")
-					.attr("stroke", function(d) { return d.d3.color; })
-					.attr("stroke-width", options.characters.strokeWidth)
-					.style('opacity', 1.0)
-		}
+        function setLocationAttributes(locations) {
+            return locations
+                    .attr("id", function (d) {
+                        return options.locations.class + d.id;
+                    })
+                    .attr("class", options.locations.class)
+                    .attr("d", function (d) {
+                        return area(d.d3.points);
+                    })
+                    .attr("fill", function (d) {
+                        return d.d3.color;
+                    })
+                    .attr("opacity", options.locations.opacity);
+        }
 
-		setCharacterLinesAttributes(lines.transition().duration(options.animation.transitionDuration));
-		setCharacterLinesAttributes(lines.enter().append("path"))
-				.on("click", function(d) {
-					toggleCharacterHighlight(d);
+        var locations = svg.selectAll("." + options.locations.class).data(dataset.locations).attr("class", options.locations.class);
+        setLocationAttributes(locations.transition().duration(options.animation.transitionDuration));
+        setLocationAttributes(locations.enter().append("path"));
 
-					d3.select(this)
-							.transition()
-							.duration(options.characters.highlightDuration)
-							.style('opacity', dataset.d3.charactersHighlighted == 0 || d.d3.isHighlighted ? 1.0 : options.characters.nonHighlightedOpacity)
-							.style('stroke-width', d.d3.isHighlighted ? options.characters.highlightStrokeWidth : options.characters.strokeWidth);
+        locations.exit().remove();
 
-					d3.event.stopPropagation();
-				});
+        var locationNames = svg.selectAll("." + options.locations.labelClass).data(dataset.locations).attr("class", options.locations.labelClass);
 
-		lines.exit().remove();
+        function setLocationNamesAttributes(locationNames) {
+            return locationNames
+                    .attr("class", options.locations.labelClass)
+                    .attr("xlink:href", function (d, i) {
+                        return "#" + options.locations.class + d.id;
+                    })
+                    .text(function (d, i) {
+                        console.log(d, i);
+                        return d.name;
+                    });
+        }
 
-		var names = svg.selectAll("." + options.characters.labelClass).data(dataset.characters).attr("class", options.characters.labelClass);
+        setLocationNamesAttributes(locationNames.transition().duration(options.animation.transitionDuration));
+        setLocationNamesAttributes(locationNames.enter().append("text").attr("x", options.locations.labelX).attr("dy", options.locations.labelDy).style("font-size", options.locations.fontSize).append("textPath"));
 
-		function setCharacterNamesAttributes(names) {
-			return names
-					.attr("class", options.characters.labelClass)
-					.attr("xlink:href", function(d) { return "#" + options.characters.class + d.id; })
-					.text(function(d) { return d.name; });
-		}
+        locationNames.exit().remove();
 
-		setCharacterNamesAttributes(names.transition().duration(options.animation.transitionDuration));
-		setCharacterNamesAttributes(names.enter().append("text").attr("x", options.characters.labelX)
-				.attr("dy", options.characters.labelDy).append("textPath"));
+        dataset.d3.charactersHighlighted = 0;
 
-		names.exit().remove();
-	};
+        svg.on("click", function () {
+            dataset.characters.forEach(function (character) {
+                if (!character.isRemoved && character.d3.isHighlighted)
 
-	// (Partial) Implementation of the algorithm presented in "StoryFlow: Tracking the Evolution of Stories"
-	function annotateDataset(dataset, options) {
-		// Compute the story timeframe
-		var timeframe = dataset.sessions.map(function(x) { return { start: x.start, end: x.end } })
-				.reduce(function(x, y) { return { start: Math.min(x.start, y.start), end: Math.max(x.end, y.end) } });
+                    toggleCharacterHighlight(character);
+            })
+        })
 
-		if(options.characters.toKeep != null) {
-			dataset.characters.forEach(function(character) {
-				character.isRemoved = (options.characters.toKeep.indexOf(String(character.id)) == -1);
-			});
+        dataset.characters.forEach(function (character) {
+            if (character.isRemoved)
+                character.d3.points = [];
+        });
+
+        var line_function = d3.svg.line().interpolate(options.characters.interpolation)
+                .x(function (d) {
+                    return d.x;
+                })
+                .y(function (d) {
+                    return d.y;
+                });
+
+        var lines = svg.selectAll("." + options.characters.class).data(dataset.characters).attr("class", options.characters.class);
+
+        function setCharacterLinesAttributes(lines) {
+            return lines
+                    .attr("class", options.characters.class)
+                    .attr("id", function (d) {
+                        return options.characters.class + d.id;
+                    })
+                    .attr("xlink:href", function (d) {
+                        return options.characters.class + d.id;
+                    })
+                    .attr("d", function (d) {
+                        return line_function(d.d3.points);
+                    })
+                    .attr("fill", "none")
+                    .attr("stroke", function (d) {
+                        return d.d3.color;
+                    })
+                    .attr("stroke-width", options.characters.strokeWidth)
+                    .style('opacity', 1.0)
+        }
+
+        setCharacterLinesAttributes(lines.transition().duration(options.animation.transitionDuration));
+        setCharacterLinesAttributes(lines.enter().append("path"))
+                .on("click", function (d) {
+                    toggleCharacterHighlight(d);
+
+                    d3.select(this)
+                            .transition()
+                            .duration(options.characters.highlightDuration)
+                            .style('opacity', dataset.d3.charactersHighlighted == 0 || d.d3.isHighlighted ? 1.0 : options.characters.nonHighlightedOpacity)
+                            .style('stroke-width', d.d3.isHighlighted ? options.characters.highlightStrokeWidth : options.characters.strokeWidth);
+
+                    d3.event.stopPropagation();
+                });
+
+        lines.exit().remove();
+
+        var names = svg.selectAll("." + options.characters.labelClass).data(dataset.characters).attr("class", options.characters.labelClass);
+
+        function setCharacterNamesAttributes(names) {
+            return names
+                    .attr("class", options.characters.labelClass)
+                    .attr("xlink:href", function (d) {
+                        return "#" + options.characters.class + d.id;
+                    })
+                    .text(function (d) {
+                        return d.name;
+                    });
+        }
+
+        setCharacterNamesAttributes(names.transition().duration(options.animation.transitionDuration));
+        setCharacterNamesAttributes(names.enter().append("text").attr("x", options.characters.labelX)
+                .attr("dy", options.characters.labelDy).append("textPath"));
+
+        names.exit().remove();
+    };
+
+    // (Partial) Implementation of the algorithm presented in "StoryFlow: Tracking the Evolution of Stories"
+    function annotateDataset(dataset, options) {
+        // Compute the story timeframe
+        var timeframe = dataset.sessions.map(function (x) {
+            return {start: x.start, end: x.end}
+        })
+                .reduce(function (x, y) {
+                    return {start: Math.min(x.start, y.start), end: Math.max(x.end, y.end)}
+                });
+
+        if (options.characters.toKeep != null) {
+            dataset.characters.forEach(function (character) {
+                character.isRemoved = (options.characters.toKeep.indexOf(String(character.id)) == -1);
+            });
 
 //			dataset.characters = dataset.characters.filter(function (character) {
 //				return options.characters.toKeep.indexOf(String(character.id)) != -1;
 //			});
 
-			dataset.sessions.forEach(function(session) {
-				session.members = session.members.filter(function(member) {
-					return options.characters.toKeep.indexOf(String(member)) != -1;
-				})
-			});
-
-			dataset.sessions = dataset.sessions.filter(function(session) {
-				return session.members.length != 0;
-			})
-		}
-
-		var enforceHierarchy = function(moment, charactersMapping, performSorting) {
-			// Place the locations with the highest number of characters first
-			moment.locations.sort(function(x, y) {
-				return x.sessions.map(function(x) { return dataset.sessions[x].members.length; })
-								.reduce(function(x, y) { return x + y; }) <
-						y.sessions.map(function(y) { return dataset.sessions[y].members.length; })
-								.reduce(function(x, y) { return x + y; });
-			});
-
-			// Sort the sessions
-			if(performSorting != undefined && performSorting == true)
-				moment.locations.forEach(function(location) {
-					location.sessions.sort(function(x, y) {
-						var xWeight = dataset.sessions[x].members
-										.map(function(x) { return charactersMapping[moment.sortedCharacters.indexOf(x)]; })
-										.reduce(function(x, y) { return x + y; })
-								/ dataset.sessions[x].members.length;
-
-						var yWeight = dataset.sessions[y].members
-										.map(function(y) { return charactersMapping[moment.sortedCharacters.indexOf(y)]; })
-										.reduce(function(x, y) { return x + y; })
-								/ dataset.sessions[y].members.length;
-
-						return xWeight > yWeight;
-					});
-				});
-
-			var characters = moment.locations.map(function(x) {
-				return x.sessions.map(function(x) {
-					var members = dataset.sessions[x].members;
-
-					if(performSorting != undefined && performSorting == true)
-						members.sort(function (x, y) { return charactersMapping[moment.sortedCharacters.indexOf(x)] > charactersMapping[moment.sortedCharacters.indexOf(y)]; });
-
-					return members;
-				})
-			});
-
-			moment.sortedCharacters = [];
-
-			characters.forEach(function(l) {
-				l.forEach(function(s) {
-					s.forEach(function(c) {
-						moment.sortedCharacters.push(c);
-					})
-				})
-			});
-		};
-
-		dataset.d3 = { time: [] };
-
-		console.log("Building the relationship trees...");
-
-		// Construct the relationship trees (one for each time unit)
-		for(var time = timeframe.start; time < timeframe.end; ++time) {
-			var moment  = { locations: [ ], sortedCharacters: [ ] };
-
-			// Append the sessions and the characters that belong to this moment
-			for(var i = 0; i < dataset.sessions.length; ++i) {
-				var session = dataset.sessions[i];
-				var location = moment.locations[session.location];
-
-				if(session.start <= time && time < session.end) {
-					if(location == undefined)
-						location = moment.locations[session.location] = { sessions: [ ] };
-
-					location.sessions.push(i);
-				}
-			}
-
-			if(moment.locations.length != 0) {
-				dataset.d3.time.push(moment);
-
-				enforceHierarchy(moment, dataset.characters.map(function (_, i, _) {
-					return i;
-				}), false);
-			}
-		}
-
-		console.log("Finished building the relationship trees.");
-
-		function computeRealizationMatrix(referenceMoment, currentMoment) {
-			var matrix = [];
-
-			// Compute the realization matrix
-			for(var r = 0; r < referenceMoment.length; ++r) {
-				matrix[r] = [];
-
-				for(var c = 0; c < currentMoment.length; ++c)
-					matrix[r][c] = referenceMoment[r] == currentMoment[c] ? 1 : 0;
-			}
-
-			return matrix;
-		}
-
-		// Compute the number of crossings in the given realization matrix
-		var computeCrossings = function(matrix, referenceMoment, currentMoment) {
-			var crossings = 0;
-
-			for(var topRow = 0; topRow < referenceMoment.length - 1; ++topRow)
-				for(var bottomRow = topRow + 1; bottomRow < referenceMoment.length; ++bottomRow)
-					for(var leftColumn = 0; leftColumn < currentMoment.length - 1; ++leftColumn)
-						for(var rightColumn = leftColumn + 1; rightColumn < currentMoment.length; ++rightColumn)
-							crossings +=
-									matrix[topRow][rightColumn] *
-									matrix[bottomRow][leftColumn];
-
-			return crossings;
-		};
-
-		var sortMoment = function(referenceMoment, currentMoment, sortRestrictions) {
-			var columnBarycenters = [];
-			var currentMapping = currentMoment.map(function(_, i, _) { return i; });
-			var backupMapping = currentMoment.map(function(_, i, _) { return i; });
-			var matrix = computeRealizationMatrix(referenceMoment, currentMoment);
-
-			// Compute the column barycenters
-			for(c = 0; c < currentMoment.length; ++c) {
-				var weightedSum = 0;
-
-				for (r = 0; r < referenceMoment.length; ++r) {
-					weightedSum += (r + 1) * matrix[r][c];
-				}
-
-				columnBarycenters[c] = weightedSum;
-			}
-
-			// Compute the number of crossings before sorting the columns
-			var crossingsBefore = computeCrossings(matrix, referenceMoment, currentMoment);
-
-			// Sort the columns by their barycenters, while making sure that we respect the hierarchical structure
-			for(var restriction = 0, offset = 0; restriction < sortRestrictions.length; ++restriction) {
-				for(i = offset; i < offset + sortRestrictions[restriction]; ++i) {
-					for(var k = i + 1; k < offset + sortRestrictions[restriction]; ++k)
-						if(columnBarycenters[i] > columnBarycenters[k]) {
-							var tmp = columnBarycenters[i];
-							columnBarycenters[i] = columnBarycenters[k];
-							columnBarycenters[k] = tmp;
-
-							tmp = currentMapping[currentMapping[i]];
-							currentMapping[currentMapping[i]] = currentMapping[currentMapping[k]];
-							currentMapping[currentMapping[k]] = tmp;
-
-							for(var r = 0; r < referenceMoment.length; ++r) {
-								var tmp = matrix[r][currentMapping[i]];
-								matrix[r][currentMapping.indexOf(i)] = matrix[r][currentMapping[k]];
-								matrix[r][currentMapping.indexOf(k)] = tmp;
-							}
-						}
-				}
-
-				offset += sortRestrictions[restriction];
-			}
-
-			// Compute the number of crossings after column sorting
-			var crossingsAfter = computeCrossings(matrix, referenceMoment, currentMoment);
-
-			if(crossingsBefore <= crossingsAfter) {
-				return { mapping: backupMapping, crossings: crossingsBefore };
-			}
-
-			return { mapping: currentMapping, crossings: crossingsAfter };
-		};
-
-		console.log("Starting sweeping...");
-
-		var bestCrossings = -1;
-		var bestDataset = jQuery.extend(true, {}, dataset);
-
-		for(var iter = 0; iter < options.algorithm.sweepingMaxIterations; ++iter) {
-			console.log("  Sweep #", iter);
-			var totalCrossings = 0;
-
-			// Sweep left->right
-			for (t = 1; t < dataset.d3.time.length; ++t) {
-				var referenceMoment = dataset.d3.time[t - 1];
-				var currentMoment = dataset.d3.time[t];
-
-				var sortRestrictions = currentMoment.locations.
-						map(function(x) { return x.sessions.map(function(x) { return dataset.sessions[x].members.length; }) }).
-						reduce(function(x, y) { return x.concat(y); });
-
-				var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
-				totalCrossings += result.crossings;
-
-				enforceHierarchy(currentMoment, result.mapping, true);
-			}
-
-			if(bestCrossings == -1 || bestCrossings >= totalCrossings) {
-				bestCrossings = totalCrossings;
-				bestDataset = jQuery.extend(true, {}, dataset);
-				console.log("Best number of crossings: ", bestCrossings);
-			}
-
-			totalCrossings = 0;
-
-			// Set the order for all time frames as the order at the last time frame
-			referenceMoment = dataset.d3.time[dataset.d3.time.length -2];
-			currentMoment = dataset.d3.time[dataset.d3.time.length -1];
-
-			// Sweep right->left to fix the order
-			var sortRestrictions = currentMoment.locations.
-					map(function(x) { return x.sessions.map(function(x) { return dataset.sessions[x].members.length; }) }).
-					reduce(function(x, y) { return x.concat(y); });
-
-
-			var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
-
-			for (t = 1; t < dataset.d3.time.length; ++t) {
-				dataset.d3.time[t].sortedCharacters.sort(function(x, y) {
-					var xIndex = currentMoment.sortedCharacters.indexOf(x);
-					var yIndex = currentMoment.sortedCharacters.indexOf(x);
-
-					if(xIndex == -1) return false;
-					if(yIndex == -1) return false;
-
-					return result.mapping[xIndex] > result.mapping[yIndex];
-				});
-
-				var oneToOneMapping = dataset.d3.time[t].sortedCharacters.map(function(_, i, _) { return i; });
-
-				enforceHierarchy(dataset.d3.time[t], oneToOneMapping, false);
-
-				var ref = dataset.d3.time[t - 1].sortedCharacters;
-				var cur = dataset.d3.time[t].sortedCharacters;
-
-				totalCrossings += computeCrossings(computeRealizationMatrix(ref, cur), ref, cur);
-			}
-
-			// console.log("!!!", totalCrossings);
-
-			if(bestCrossings == -1 || bestCrossings >= totalCrossings) {
-				bestCrossings = totalCrossings;
-				bestDataset = jQuery.extend(true, {}, dataset);
-				console.log("Best number of crossings: ", bestCrossings);
-			}
-
-			totalCrossings = 0;
-
-			// Sweep right->left
-			for (t = dataset.d3.time.length - 2; t >= 0; --t) {
-				referenceMoment = dataset.d3.time[t  + 1];
-				currentMoment = dataset.d3.time[t];
-
-				var sortRestrictions = currentMoment.locations.
-						map(function(x) { return x.sessions.map(function(x) { return dataset.sessions[x].members.length; }) }).
-						reduce(function(x, y) { return x.concat(y); });
-
-				var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
-				totalCrossings += result.crossings;
-
-				enforceHierarchy(currentMoment, result.mapping, true);
-			}
-
-			if(bestCrossings == -1 || bestCrossings >= totalCrossings) {
-				bestCrossings = totalCrossings;
-				bestDataset = jQuery.extend(true, {}, dataset);
-				console.log("Best number of crossings: ", bestCrossings);
-			}
-
-			totalCrossings = 0;
-
-			// Set the order for all time frames as the order at the first time frame
-			referenceMoment = dataset.d3.time[timeframe.start];
-			currentMoment = dataset.d3.time[timeframe.start + 1];
-
-			// Sweep right->left to fix the order
-			var sortRestrictions = currentMoment.locations.
-					map(function(x) { return x.sessions.map(function(x) { return dataset.sessions[x].members.length; }) }).
-					reduce(function(x, y) { return x.concat(y); });
-
-
-			var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
-
-			for (t = 1; t < dataset.d3.time.length; ++t) {
-				dataset.d3.time[t].sortedCharacters.sort(function(x, y) {
-					var xIndex = currentMoment.sortedCharacters.indexOf(x);
-					var yIndex = currentMoment.sortedCharacters.indexOf(x);
-
-					if(xIndex == -1) return false;
-					if(yIndex == -1) return false;
-
-					return result.mapping[xIndex] > result.mapping[yIndex];
-				});
-
-				var oneToOneMapping = dataset.d3.time[t].sortedCharacters.map(function(_, i, _) { return i; });
-
-				enforceHierarchy(dataset.d3.time[t], oneToOneMapping, false);
-
-				var ref = dataset.d3.time[t - 1].sortedCharacters;
-				var cur = dataset.d3.time[t].sortedCharacters;
-
-				totalCrossings += computeCrossings(computeRealizationMatrix(ref, cur), ref, cur);
-			}
-
-			if(bestCrossings == -1 || bestCrossings >= totalCrossings) {
-				bestCrossings = totalCrossings;
-				bestDataset = jQuery.extend(true, {}, dataset);
-				console.log("Best number of crossings: ", bestCrossings);
-			}
-		}
-
-		return bestDataset;
-	}
+            dataset.sessions.forEach(function (session) {
+                session.members = session.members.filter(function (member) {
+                    return options.characters.toKeep.indexOf(String(member)) != -1;
+                })
+            });
+
+            dataset.sessions = dataset.sessions.filter(function (session) {
+                return session.members.length != 0;
+            })
+        }
+
+        var enforceHierarchy = function (moment, charactersMapping, performSorting) {
+            // Place the locations with the highest number of characters first
+            moment.locations.sort(function (x, y) {
+                return x.sessions.map(function (x) {
+                            return dataset.sessions[x].members.length;
+                        })
+                                .reduce(function (x, y) {
+                                    return x + y;
+                                }) <
+                        y.sessions.map(function (y) {
+                            return dataset.sessions[y].members.length;
+                        })
+                                .reduce(function (x, y) {
+                                    return x + y;
+                                });
+            });
+
+            // Sort the sessions
+            if (performSorting != undefined && performSorting == true)
+                moment.locations.forEach(function (location) {
+                    location.sessions.sort(function (x, y) {
+                        var xWeight = dataset.sessions[x].members
+                                        .map(function (x) {
+                                            return charactersMapping[moment.sortedCharacters.indexOf(x)];
+                                        })
+                                        .reduce(function (x, y) {
+                                            return x + y;
+                                        })
+                                / dataset.sessions[x].members.length;
+
+                        var yWeight = dataset.sessions[y].members
+                                        .map(function (y) {
+                                            return charactersMapping[moment.sortedCharacters.indexOf(y)];
+                                        })
+                                        .reduce(function (x, y) {
+                                            return x + y;
+                                        })
+                                / dataset.sessions[y].members.length;
+
+                        return xWeight > yWeight;
+                    });
+                });
+
+            var characters = moment.locations.map(function (x) {
+                return x.sessions.map(function (x) {
+                    var members = dataset.sessions[x].members;
+
+                    if (performSorting != undefined && performSorting == true)
+                        members.sort(function (x, y) {
+                            return charactersMapping[moment.sortedCharacters.indexOf(x)] > charactersMapping[moment.sortedCharacters.indexOf(y)];
+                        });
+
+                    return members;
+                })
+            });
+
+            moment.sortedCharacters = [];
+
+            characters.forEach(function (l) {
+                l.forEach(function (s) {
+                    s.forEach(function (c) {
+                        moment.sortedCharacters.push(c);
+                    })
+                })
+            });
+        };
+
+        dataset.d3 = {time: []};
+
+        console.log("Building the relationship trees...");
+
+        // Construct the relationship trees (one for each time unit)
+        for (var time = timeframe.start; time < timeframe.end; ++time) {
+            var moment = {locations: [], sortedCharacters: []};
+
+            // Append the sessions and the characters that belong to this moment
+            for (var i = 0; i < dataset.sessions.length; ++i) {
+                var session  = dataset.sessions[i];
+                var location = moment.locations[session.location];
+
+                if (session.start <= time && time < session.end) {
+                    if (location == undefined)
+                        location = moment.locations[session.location] = {sessions: []};
+
+                    location.sessions.push(i);
+                }
+            }
+
+            if (moment.locations.length != 0) {
+                dataset.d3.time.push(moment);
+
+                enforceHierarchy(moment, dataset.characters.map(function (_, i, _) {
+                    return i;
+                }), false);
+            }
+        }
+
+        console.log("Finished building the relationship trees.");
+
+        function computeRealizationMatrix(referenceMoment, currentMoment) {
+            var matrix = [];
+
+            // Compute the realization matrix
+            for (var r = 0; r < referenceMoment.length; ++r) {
+                matrix[r] = [];
+
+                for (var c = 0; c < currentMoment.length; ++c)
+                    matrix[r][c] = referenceMoment[r] == currentMoment[c] ? 1 : 0;
+            }
+
+            return matrix;
+        }
+
+        // Compute the number of crossings in the given realization matrix
+        var computeCrossings = function (matrix, referenceMoment, currentMoment) {
+            var crossings = 0;
+
+            for (var topRow = 0; topRow < referenceMoment.length - 1; ++topRow)
+                for (var bottomRow = topRow + 1; bottomRow < referenceMoment.length; ++bottomRow)
+                    for (var leftColumn = 0; leftColumn < currentMoment.length - 1; ++leftColumn)
+                        for (var rightColumn = leftColumn + 1; rightColumn < currentMoment.length; ++rightColumn)
+                            crossings +=
+                                    matrix[topRow][rightColumn] *
+                                    matrix[bottomRow][leftColumn];
+
+            return crossings;
+        };
+
+        var sortMoment = function (referenceMoment, currentMoment, sortRestrictions) {
+            var columnBarycenters = [];
+            var currentMapping    = currentMoment.map(function (_, i, _) {
+                return i;
+            });
+            var backupMapping     = currentMoment.map(function (_, i, _) {
+                return i;
+            });
+            var matrix            = computeRealizationMatrix(referenceMoment, currentMoment);
+
+            // Compute the column barycenters
+            for (c = 0; c < currentMoment.length; ++c) {
+                var weightedSum = 0;
+
+                for (r = 0; r < referenceMoment.length; ++r) {
+                    weightedSum += (r + 1) * matrix[r][c];
+                }
+
+                columnBarycenters[c] = weightedSum;
+            }
+
+            // Compute the number of crossings before sorting the columns
+            var crossingsBefore = computeCrossings(matrix, referenceMoment, currentMoment);
+
+            // Sort the columns by their barycenters, while making sure that we respect the hierarchical structure
+            for (var restriction = 0, offset = 0; restriction < sortRestrictions.length; ++restriction) {
+                for (i = offset; i < offset + sortRestrictions[restriction]; ++i) {
+                    for (var k = i + 1; k < offset + sortRestrictions[restriction]; ++k)
+                        if (columnBarycenters[i] > columnBarycenters[k]) {
+                            var tmp              = columnBarycenters[i];
+                            columnBarycenters[i] = columnBarycenters[k];
+                            columnBarycenters[k] = tmp;
+
+                            tmp                               = currentMapping[currentMapping[i]];
+                            currentMapping[currentMapping[i]] = currentMapping[currentMapping[k]];
+                            currentMapping[currentMapping[k]] = tmp;
+
+                            for (var r = 0; r < referenceMoment.length; ++r) {
+                                var tmp                              = matrix[r][currentMapping[i]];
+                                matrix[r][currentMapping.indexOf(i)] = matrix[r][currentMapping[k]];
+                                matrix[r][currentMapping.indexOf(k)] = tmp;
+                            }
+                        }
+                }
+
+                offset += sortRestrictions[restriction];
+            }
+
+            // Compute the number of crossings after column sorting
+            var crossingsAfter = computeCrossings(matrix, referenceMoment, currentMoment);
+
+            if (crossingsBefore <= crossingsAfter) {
+                return {mapping: backupMapping, crossings: crossingsBefore};
+            }
+
+            return {mapping: currentMapping, crossings: crossingsAfter};
+        };
+
+        console.log("Starting sweeping...");
+
+        var bestCrossings = -1;
+        var bestDataset   = jQuery.extend(true, {}, dataset);
+
+        for (var iter = 0; iter < options.algorithm.sweepingMaxIterations; ++iter) {
+            console.log("  Sweep #", iter);
+            var totalCrossings = 0;
+
+            // Sweep left->right
+            for (t = 1; t < dataset.d3.time.length; ++t) {
+                var referenceMoment = dataset.d3.time[t - 1];
+                var currentMoment   = dataset.d3.time[t];
+
+                var sortRestrictions = currentMoment.locations.
+                        map(function (x) {
+                            return x.sessions.map(function (x) {
+                                return dataset.sessions[x].members.length;
+                            })
+                        }).
+                        reduce(function (x, y) {
+                            return x.concat(y);
+                        });
+
+                var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
+                totalCrossings += result.crossings;
+
+                enforceHierarchy(currentMoment, result.mapping, true);
+            }
+
+            if (bestCrossings == -1 || bestCrossings >= totalCrossings) {
+                bestCrossings = totalCrossings;
+                bestDataset   = jQuery.extend(true, {}, dataset);
+                console.log("Best number of crossings: ", bestCrossings);
+            }
+
+            totalCrossings = 0;
+
+            // Set the order for all time frames as the order at the last time frame
+            referenceMoment = dataset.d3.time[dataset.d3.time.length - 2];
+            currentMoment   = dataset.d3.time[dataset.d3.time.length - 1];
+
+            // Sweep right->left to fix the order
+            var sortRestrictions = currentMoment.locations.
+                    map(function (x) {
+                        return x.sessions.map(function (x) {
+                            return dataset.sessions[x].members.length;
+                        })
+                    }).
+                    reduce(function (x, y) {
+                        return x.concat(y);
+                    });
+
+
+            var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
+
+            for (t = 1; t < dataset.d3.time.length; ++t) {
+                dataset.d3.time[t].sortedCharacters.sort(function (x, y) {
+                    var xIndex = currentMoment.sortedCharacters.indexOf(x);
+                    var yIndex = currentMoment.sortedCharacters.indexOf(x);
+
+                    if (xIndex == -1) return false;
+                    if (yIndex == -1) return false;
+
+                    return result.mapping[xIndex] > result.mapping[yIndex];
+                });
+
+                var oneToOneMapping = dataset.d3.time[t].sortedCharacters.map(function (_, i, _) {
+                    return i;
+                });
+
+                enforceHierarchy(dataset.d3.time[t], oneToOneMapping, false);
+
+                var ref = dataset.d3.time[t - 1].sortedCharacters;
+                var cur = dataset.d3.time[t].sortedCharacters;
+
+                totalCrossings += computeCrossings(computeRealizationMatrix(ref, cur), ref, cur);
+            }
+
+            // console.log("!!!", totalCrossings);
+
+            if (bestCrossings == -1 || bestCrossings >= totalCrossings) {
+                bestCrossings = totalCrossings;
+                bestDataset   = jQuery.extend(true, {}, dataset);
+                console.log("Best number of crossings: ", bestCrossings);
+            }
+
+            totalCrossings = 0;
+
+            // Sweep right->left
+            for (t = dataset.d3.time.length - 2; t >= 0; --t) {
+                referenceMoment = dataset.d3.time[t + 1];
+                currentMoment   = dataset.d3.time[t];
+
+                var sortRestrictions = currentMoment.locations.
+                        map(function (x) {
+                            return x.sessions.map(function (x) {
+                                return dataset.sessions[x].members.length;
+                            })
+                        }).
+                        reduce(function (x, y) {
+                            return x.concat(y);
+                        });
+
+                var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
+                totalCrossings += result.crossings;
+
+                enforceHierarchy(currentMoment, result.mapping, true);
+            }
+
+            if (bestCrossings == -1 || bestCrossings >= totalCrossings) {
+                bestCrossings = totalCrossings;
+                bestDataset   = jQuery.extend(true, {}, dataset);
+                console.log("Best number of crossings: ", bestCrossings);
+            }
+
+            totalCrossings = 0;
+
+            // Set the order for all time frames as the order at the first time frame
+            referenceMoment = dataset.d3.time[timeframe.start];
+            currentMoment   = dataset.d3.time[timeframe.start + 1];
+
+            // Sweep right->left to fix the order
+            var sortRestrictions = currentMoment.locations.
+                    map(function (x) {
+                        return x.sessions.map(function (x) {
+                            return dataset.sessions[x].members.length;
+                        })
+                    }).
+                    reduce(function (x, y) {
+                        return x.concat(y);
+                    });
+
+
+            var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
+
+            for (t = 1; t < dataset.d3.time.length; ++t) {
+                dataset.d3.time[t].sortedCharacters.sort(function (x, y) {
+                    var xIndex = currentMoment.sortedCharacters.indexOf(x);
+                    var yIndex = currentMoment.sortedCharacters.indexOf(x);
+
+                    if (xIndex == -1) return false;
+                    if (yIndex == -1) return false;
+
+                    return result.mapping[xIndex] > result.mapping[yIndex];
+                });
+
+                var oneToOneMapping = dataset.d3.time[t].sortedCharacters.map(function (_, i, _) {
+                    return i;
+                });
+
+                enforceHierarchy(dataset.d3.time[t], oneToOneMapping, false);
+
+                var ref = dataset.d3.time[t - 1].sortedCharacters;
+                var cur = dataset.d3.time[t].sortedCharacters;
+
+                totalCrossings += computeCrossings(computeRealizationMatrix(ref, cur), ref, cur);
+            }
+
+            if (bestCrossings == -1 || bestCrossings >= totalCrossings) {
+                bestCrossings = totalCrossings;
+                bestDataset   = jQuery.extend(true, {}, dataset);
+                console.log("Best number of crossings: ", bestCrossings);
+            }
+        }
+
+        return bestDataset;
+    }
 </script>
 
 <table>
-	<tr>
-		<td>
-			<select name="dataset" id="dataset">
-				<option value="dataset/the_matrix.json" selected>The Matrix</option>
-				<option value="dataset/alice_in_wonderland.json">Alice in Wonderland</option>
-				<option value="dataset/star_wars.json">Star Wars</option>
-			</select>
-		</td>
-		<td>
-			<select name="interpolation" id="interpolation">
-				<option value="linear">Linear</option>
-				<option value="step">Step</option>
-				<option value="step-before">Step-before</option>
-				<option value="step-after">Step-after</option>
-				<option value="basis">Basis</option>
-				<option value="bundle">Bundle</option>
-				<option value="cardinal">Cardinal</option>
-				<option value="monotone" selected>Monotone</option>
-			</select>
-		</td>
-		<td>
-			<select name="characters" id="characters" multiple="multiple"/>
-		</td>
-	</tr>
+    <tr>
+        <td>
+            <select name="dataset" id="dataset">
+                <option value="dataset/the_matrix.json" selected>The Matrix</option>
+                <option value="dataset/alice_in_wonderland.json">Alice in Wonderland</option>
+                <option value="dataset/star_wars.json">Star Wars</option>
+            </select>
+        </td>
+        <td>
+            <select name="interpolation" id="interpolation">
+                <option value="linear">Linear</option>
+                <option value="step">Step</option>
+                <option value="step-before">Step-before</option>
+                <option value="step-after">Step-after</option>
+                <option value="basis">Basis</option>
+                <option value="bundle">Bundle</option>
+                <option value="cardinal">Cardinal</option>
+                <option value="monotone" selected>Monotone</option>
+            </select>
+        </td>
+        <td>
+            <select name="characters" id="characters" multiple="multiple"/>
+        </td>
+    </tr>
 </table>
 
 <div id="canvas"/>
