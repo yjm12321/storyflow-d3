@@ -15,6 +15,7 @@
     var dataset = null;
     var svg = null;
 
+    // Store configuration parameters for the algorithm and the visualization
     var options = {
         svg: {
             element: "#canvas",
@@ -57,24 +58,29 @@
     $(document).ready(function () {
         svg = d3.select(options.svg.element).append("svg").attr("height", options.svg.height).attr("width", options.svg.width);
 
+        // Runs the layout optimization algorithms and visualizes the result
         function buildDrawStoryFlow(path, options) {
             d3.json(path, function (error, json) {
                 if (error)
                     return console.error(error);
 
+                // Run the algorithm to optimize the layout
                 dataset = annotateDataset(json, options);
 
+                // First run of this dataset, load the characters into the select
                 if (options.characters.toKeep == null) {
                     $('#characters').empty();
                     $('#characters')[0].sumo.reload();
+
                     options.characters.toKeep = dataset.characters.map(function (character) {
-                        return character.id
+                        return character.id;
                     });
 
                     dataset.characters.forEach(function (character) {
                         $("#characters")[0].sumo.add(character.id, character.name);
                     });
 
+                    // By default, draw all the characters
                     $("#characters")[0].sumo.selectAll();
                 }
 
@@ -82,11 +88,10 @@
             });
         };
 
-        var datasetSelector = $("#dataset");
-
-        datasetSelector.selectmenu({
+        $("#dataset").selectmenu({
             width: 230,
             select: function (event, ui) {
+                // Makes sure we reload the characters for the new dataset
                 options.characters.toKeep = null;
 
                 buildDrawStoryFlow(ui.item.value, options);
@@ -99,63 +104,39 @@
                 options.characters.interpolation = ui.item.value;
                 options.locations.interpolation  = options.characters.interpolation;
 
+                // Avoid recomputing the layout, just update the visualization
                 drawStoryFlow(dataset, options);
             }
         });
 
-        $("#characters").SumoSelect({
-            placeholder: "Characters"
-        });
+        $("#characters").SumoSelect();
 
         $("#characters").change(function () {
+            // Fetch the list of characters to display
             options.characters.toKeep = $("#characters").val();
 
-            buildDrawStoryFlow(datasetSelector.val(), options);
+            // Load the dataset and display
+            buildDrawStoryFlow($("#dataset").val(), options);
         });
 
-        $(window).scroll(function () {
-            var horizontal = $(document).scrollLeft();
-//			console.log(horizontal);
-            updateLabels(horizontal);
-        });
-
-        buildDrawStoryFlow(datasetSelector.val(), options);
+        // When the page loads for the first time, visualize the default dataset
+        buildDrawStoryFlow($("#dataset").val(), options);
     });
 
-    function updateLabels(horizontalOffset) {
-//		console.log(horizontalOffset);
-//
-//		dataset.characters.forEach(function(character) {
-//			character.nameOffset = horizontalOffset;
-//		});
-//
-//		d3.selectAll("." + "qqq").remove();
-//
-//		var names = svg.selectAll("." + "qqq").data(dataset.characters).attr("class", "qqq");
-//
-//		function setCharacterNamesAttributes(names) {
-//			return names
-//					.attr("class", "qqq")
-//					.attr("dy", 0)
-//					.attr("x", horizontalOffset)
-//					.attr("xlink:href", function(d) { return "#" + options.characters.class + d.id; })
-//					.text(function(d) { return "3232"; });
-//		}
-//
-//		setCharacterNamesAttributes(names.transition().duration(options.animation.transitionDuration));
-//		setCharacterNamesAttributes(names.enter().append("text").attr("x", horizontalOffset).append("textPath"));
-//
-//		names.exit().remove();
-    }
-
-    var drawStoryFlow = function (dataset, options) {
-        // Generate the colors of the characters
-        var colors         = dataset.characters.length <= 10 ? d3.scale.category10() : d3.scale.category20();
-        var locationColors = dataset.locations.length <= 10 ? d3.scale.category10() : d3.scale.category20();
+    /**
+     * Display the dataset using d3.js
+     *
+     * @param dataset the dataset to visualize
+     * @param options configuration options
+     */
+    function drawStoryFlow (dataset, options) {
+        // Set the colors of the characters and locations
+        var characterColors = dataset.characters.length <= 10 ? d3.scale.category10() : d3.scale.category20();
+        var locationColors  = dataset.locations.length <= 10 ? d3.scale.category10() : d3.scale.category20();
 
         // Assign each character a color
         for (i = 0; i < dataset.characters.length; ++i) {
-            dataset.characters[i].d3 = {color: colors(i)};
+            dataset.characters[i].d3 = {color: characterColors(i)};
         }
 
         // Assign each location a color
@@ -164,6 +145,7 @@
         }
 
         // Compute the maximum number of characters in a time unit
+        // (Useful for scaling the layout)
         var maxCharacters = dataset.d3.time.map(function (time) {
             return time.sortedCharacters.length;
         })
@@ -171,7 +153,7 @@
                     return Math.max(x, y);
                 });
 
-        // Create various scales used to process the dataset
+        // Create various scales
         var verticalScale = d3.scale.linear()
                 .domain([0, maxCharacters])
                 .range([options.svg.topPadding, options.svg.height]);
@@ -180,11 +162,14 @@
                 .domain([0, dataset.d3.time.length])
                 .range([0, options.svg.width]);
 
-        // Compute path of each character
+        // Compute the path of each character
         for (var t = 0; t < dataset.d3.time.length; ++t) {
             var time = dataset.d3.time[t];
 
-            var sortRestrictions = time.locations.
+            // Since we use the characters in time.sortedCharacter, we need a way of knowing
+            // how they are grouped together (in sessions)
+            // characterGroups stores the number of sessions and how many characters it contains
+            var characterGroups = time.locations.
                     map(function (x) {
                         return x.sessions.map(function (x) {
                             return dataset.sessions[x].members.length;
@@ -196,16 +181,19 @@
 
             var offset = 0;
 
-            sortRestrictions.forEach(function (restriction) {
+            // We apply 'compation', drawing the characters which interact with each other
+            // closer, by computing their mean Y coordinate and distributing them more closely around it
+            characterGroups.forEach(function (charactersInSession) {
                 var mean = 0;
 
-                for (i = 0; i < restriction; ++i) {
+                for (i = 0; i < charactersInSession; ++i) {
                     mean += verticalScale(offset + i);
                 }
 
-                mean /= restriction;
+                mean /= charactersInSession;
 
-                for (i = 0; i < restriction; ++i) {
+                for (i = 0; i < charactersInSession; ++i) {
+                    // Fetch the character with the given ID
                     var character = dataset.characters.filter(function (character) {
                         return character.id == time.sortedCharacters[offset + i];
                     })[0];
@@ -216,16 +204,25 @@
                     if (character.d3.points == undefined)
                         character.d3.points = [];
 
+                    // Distribute it around the mean according to it's position in the session
                     character.d3.points.push({
                         x: horizontalScale(t),
                         y: mean + ((verticalScale(offset + i) - mean) / options.characters.sessionCoefficient)
                     });
                 }
 
-                offset += restriction;
+                // Keep track of the index in time.sortedCharacters
+                offset += charactersInSession;
             });
         }
 
+        // Store the boundary points for each location
+        // We will store the points that define the 'shape' of each location
+        // The points are sorted increasingly according to the X coordinate
+        // For each 'time', we will store the top (minimum Y) and bottom (maximum Y) points,
+        // which allows us to use d3.area to visualize the locations
+
+        // TODO: Optimize, very inefficient
         for (var t = 0; t < dataset.d3.time.length; ++t) {
             var time = dataset.d3.time[t];
 
@@ -233,27 +230,23 @@
                 var sessions = time.locations[i].sessions;
 
                 for (k = 0; k < sessions.length; ++k) {
-                    var sessionId = sessions[k];
-                    var session   = dataset.sessions[sessionId];
-
-                    var locationId = session.location;
-                    var location   = dataset.locations[locationId];
+                    var session   = dataset.sessions[sessions[k]];
+                    var location   = dataset.locations[session.location];
 
                     for (var h = 0; h < session.members.length; ++h) {
-                        var characterId = session.members[h];
                         var character   = dataset.characters.filter(function (character) {
-                            return character.id == characterId;
+                            return character.id == session.members[h];
                         })[0];
 
                         if (location.d3.points == undefined)
                             location.d3.points = [];
 
-                        for (var o = 0; o < character.d3.points.length; ++o) {
-                            var characterPoint = character.d3.points[o];
-
+                        character.d3.points.forEach(function(characterPoint) {
+                            // We are only interested in the points belonging to this 'time'
                             if (characterPoint.x != horizontalScale(t))
-                                continue;
+                                return;
 
+                            // No points added -> nothing to check
                             if (location.d3.points.length == 0)
                                 location.d3.points.push({
                                     top: characterPoint,
@@ -261,44 +254,69 @@
                                 });
                             else {
                                 var lastPoint = location.d3.points[location.d3.points.length - 1];
+
+                                // If the last points is from this 'time'
                                 if (lastPoint.top.x == characterPoint.x) {
+                                    // If the new point is 'higher' (lower Y), replace the top one
                                     if (lastPoint.top.y > characterPoint.y) {
                                         location.d3.points[location.d3.points.length - 1].top = characterPoint;
                                     } else if (lastPoint.bottom.y < characterPoint.y) {
+                                        // If the new points is 'lower' (higher Y), replace the bottom one
                                         location.d3.points[location.d3.points.length - 1].bottom = characterPoint;
                                     }
                                 } else {
+                                    // First point of belonging to this 'time' -> nothing to check
                                     location.d3.points.push({
                                         top: characterPoint,
                                         bottom: characterPoint
                                     });
                                 }
                             }
-                        }
+                        });
                     }
                 }
             }
         }
 
+        // Remove the locations which have no points
+        // (because the characters which used to belong to it were removed)
         dataset.locations = dataset.locations.filter(function (location) {
             return location.d3.points != undefined;
         });
 
-        for (i = 0; i < dataset.locations.length; ++i) {
+        // Split the locations
+        // If the gap (on OX) between two characters that belong to the same location
+        // is bigger that options.locations.splitLength, we artificially split the location
+        // into two parts. Otherwise, the long interpolation between the two distant characters
+        // looks out of place and overlaps with other location, cluttering the visualization
+        for(i = 0; i < dataset.locations.length; ++i) {
             var location = dataset.locations[i];
 
             for (k = 1; k < location.d3.points.length; ++k) {
                 if (location.d3.points[k].top.x - location.d3.points[k - 1].top.x > options.locations.splitLength) {
+                    // Create the new (artificial location) as a hard copy of the current one
                     var newLocation       = jQuery.extend(true, {}, location);
+
+                    // Assign to it the points that are too far away from the current location
                     newLocation.d3.points = newLocation.d3.points.slice(k);
+
+                    // Assign a new id to the location
                     newLocation.id        = dataset.locations.length;
-                    dataset.locations.push(newLocation);
+
+                    // Remove the points (from the current location) that are too far away
                     location.d3.points    = location.d3.points.slice(0, k);
+
+                    // Append the new location (if it, in turn, contains another 'jump',
+                    // this will be picked up by the the outer for loop and split again)
+                    dataset.locations.push(newLocation);
+
+                    // No need to process the remaining points
                     break;
                 }
             }
         }
 
+        // Handles what happens when a character line is clicked
         function toggleCharacterHighlight(character) {
             // Previously no characters were highlighted => fade all away
             if (dataset.d3.charactersHighlighted == 0)
@@ -308,6 +326,7 @@
                         .style('opacity', options.characters.nonHighlightedOpacity)
                         .style('stroke-width', options.characters.strokeWidth);
 
+            // Toggle the highlight state
             character.d3.isHighlighted = !character.d3.isHighlighted;
             dataset.d3.charactersHighlighted += character.d3.isHighlighted ? 1 : -1;
 
@@ -320,7 +339,7 @@
                         .style('stroke-width', options.characters.strokeWidth);
         }
 
-        var area = d3.svg.area().interpolate(options.locations.interpolation)
+        var locationArea = d3.svg.area().interpolate(options.locations.interpolation)
                 .x(function (d) {
                     return d.top.x;
                 })
@@ -331,6 +350,8 @@
                     return d.top.y - options.locations.padding
                 });
 
+        // Sets the attributes for a location area
+        // (an ID is defined for each area, so that we can 'bind' the labels to them)
         function setLocationAttributes(locations) {
             return locations
                     .attr("id", function (d) {
@@ -338,7 +359,7 @@
                     })
                     .attr("class", options.locations.class)
                     .attr("d", function (d) {
-                        return area(d.d3.points);
+                        return locationArea(d.d3.points);
                     })
                     .attr("fill", function (d) {
                         return d.d3.color;
@@ -346,14 +367,15 @@
                     .attr("opacity", options.locations.opacity);
         }
 
+        // Update the location lines
         var locations = svg.selectAll("." + options.locations.class).data(dataset.locations).attr("class", options.locations.class);
         setLocationAttributes(locations.transition().duration(options.animation.transitionDuration));
         setLocationAttributes(locations.enter().append("path"));
 
         locations.exit().remove();
 
-        var locationNames = svg.selectAll("." + options.locations.labelClass).data(dataset.locations).attr("class", options.locations.labelClass);
-
+        // Sets the attributes for the location labels
+        // ('bind' them to the right location)
         function setLocationNamesAttributes(locationNames) {
             return locationNames
                     .attr("class", options.locations.labelClass)
@@ -366,6 +388,8 @@
                     });
         }
 
+        // Update the location labels
+        var locationNames = svg.selectAll("." + options.locations.labelClass).data(dataset.locations).attr("class", options.locations.labelClass);
         setLocationNamesAttributes(locationNames.transition().duration(options.animation.transitionDuration));
         setLocationNamesAttributes(locationNames.enter().append("text").attr("x", options.locations.labelX).attr("dy", options.locations.labelDy).style("font-size", options.locations.fontSize).append("textPath"));
 
@@ -373,14 +397,17 @@
 
         dataset.d3.charactersHighlighted = 0;
 
+        // When the background of the visualization is clicked, the highlited characters loose the highlight
         svg.on("click", function () {
             dataset.characters.forEach(function (character) {
                 if (!character.isRemoved && character.d3.isHighlighted)
 
                     toggleCharacterHighlight(character);
             })
-        })
+        });
 
+        // Add 'dummy' data for the removed characters (avoids actually removing them and fixing the broken dependencies)
+        // FIXME: This should not be necessary
         dataset.characters.forEach(function (character) {
             if (character.isRemoved)
                 character.d3.points = [];
@@ -394,8 +421,8 @@
                     return d.y;
                 });
 
-        var lines = svg.selectAll("." + options.characters.class).data(dataset.characters).attr("class", options.characters.class);
-
+        // Set the attributes for the character lines
+        // (an ID is defined for each character, so that we can 'bind' the labels to them)
         function setCharacterLinesAttributes(lines) {
             return lines
                     .attr("class", options.characters.class)
@@ -416,6 +443,8 @@
                     .style('opacity', 1.0)
         }
 
+        // Update the character lines
+        var lines = svg.selectAll("." + options.characters.class).data(dataset.characters).attr("class", options.characters.class);
         setCharacterLinesAttributes(lines.transition().duration(options.animation.transitionDuration));
         setCharacterLinesAttributes(lines.enter().append("path"))
                 .on("click", function (d) {
@@ -432,8 +461,8 @@
 
         lines.exit().remove();
 
-        var names = svg.selectAll("." + options.characters.labelClass).data(dataset.characters).attr("class", options.characters.labelClass);
-
+        // Set the attributes for character labels
+        // ('bind' them to the right characters)
         function setCharacterNamesAttributes(names) {
             return names
                     .attr("class", options.characters.labelClass)
@@ -445,12 +474,14 @@
                     });
         }
 
+        // Update the character labels
+        var names = svg.selectAll("." + options.characters.labelClass).data(dataset.characters).attr("class", options.characters.labelClass);
         setCharacterNamesAttributes(names.transition().duration(options.animation.transitionDuration));
         setCharacterNamesAttributes(names.enter().append("text").attr("x", options.characters.labelX)
                 .attr("dy", options.characters.labelDy).append("textPath"));
 
         names.exit().remove();
-    };
+    }
 
     // (Partial) Implementation of the algorithm presented in "StoryFlow: Tracking the Evolution of Stories"
     function annotateDataset(dataset, options) {
@@ -462,27 +493,35 @@
                     return {start: Math.min(x.start, y.start), end: Math.max(x.end, y.end)}
                 });
 
+        // Remove any characters that should not be displayed
         if (options.characters.toKeep != null) {
+            // Remove the characters themselves
             dataset.characters.forEach(function (character) {
                 character.isRemoved = (options.characters.toKeep.indexOf(String(character.id)) == -1);
             });
 
-//			dataset.characters = dataset.characters.filter(function (character) {
-//				return options.characters.toKeep.indexOf(String(character.id)) != -1;
-//			});
-
+            // Remove the 'pointers' to these characters
             dataset.sessions.forEach(function (session) {
                 session.members = session.members.filter(function (member) {
                     return options.characters.toKeep.indexOf(String(member)) != -1;
                 })
             });
 
+            // Remove sessions that are left with no characters
             dataset.sessions = dataset.sessions.filter(function (session) {
                 return session.members.length != 0;
             })
         }
 
-        var enforceHierarchy = function (moment, charactersMapping, performSorting) {
+        /**
+         * Rearranges the locations, session and characters in the given moment such that
+         * the hierarchical constrains are met. 
+         * @param moment the moment to optimize
+         * @param charactersMapping a permutation of the characters which need to be applied to the moment
+         * (if no reordering is needed, pass the identity permutation)
+         * @param performSorting whether to sort the sessions and characters according to their weights
+         */
+        function optimizeMoment(moment, charactersMapping, performSorting) {
             // Place the locations with the highest number of characters first
             moment.locations.sort(function (x, y) {
                 return x.sessions.map(function (x) {
@@ -499,7 +538,7 @@
                                 });
             });
 
-            // Sort the sessions
+            // Sort the sessions according to their weights
             if (performSorting != undefined && performSorting == true)
                 moment.locations.forEach(function (location) {
                     location.sessions.sort(function (x, y) {
@@ -525,6 +564,8 @@
                     });
                 });
 
+            // Combine all the characters from this moment into a hierarchical structure
+            // and optionally sort them according to their weights
             var characters = moment.locations.map(function (x) {
                 return x.sessions.map(function (x) {
                     var members = dataset.sessions[x].members;
@@ -540,6 +581,7 @@
 
             moment.sortedCharacters = [];
 
+            // Store the characters according to the hierarchy in an array
             characters.forEach(function (l) {
                 l.forEach(function (s) {
                     s.forEach(function (c) {
@@ -547,11 +589,9 @@
                     })
                 })
             });
-        };
+        }
 
         dataset.d3 = {time: []};
-
-        console.log("Building the relationship trees...");
 
         // Construct the relationship trees (one for each time unit)
         for (var time = timeframe.start; time < timeframe.end; ++time) {
@@ -570,21 +610,26 @@
                 }
             }
 
+            // The moment may not contain any characters (them may have been removed)
             if (moment.locations.length != 0) {
                 dataset.d3.time.push(moment);
 
-                enforceHierarchy(moment, dataset.characters.map(function (_, i, _) {
+                // Perform minimal optimizations (location sorting)
+                optimizeMoment(moment, dataset.characters.map(function (_, i, _) {
                     return i;
                 }), false);
             }
         }
 
-        console.log("Finished building the relationship trees.");
-
+        /**
+         * Compute the realization matrix as defined in Methods for Visual Understanding of Hierarchical System Structures
+         * @param referenceMoment moment containing the characters considered as 'fixed'
+         * @param currentMoment moment containing the characters which will be reordered
+         * @returns the realization matrix
+         */
         function computeRealizationMatrix(referenceMoment, currentMoment) {
             var matrix = [];
 
-            // Compute the realization matrix
             for (var r = 0; r < referenceMoment.length; ++r) {
                 matrix[r] = [];
 
@@ -595,7 +640,13 @@
             return matrix;
         }
 
-        // Compute the number of crossings in the given realization matrix
+        /**
+         * Compute the number of crossings in the given realization matrix
+         * Algorithm from: Methods for Visual Understanding of Hierarchical System Structures
+         * @param referenceMoment moment containing the characters considered as 'fixed'
+         * @param currentMoment moment containing the characters which will be reordered
+         * @returns the number of crossings
+         */
         var computeCrossings = function (matrix, referenceMoment, currentMoment) {
             var crossings = 0;
 
@@ -610,14 +661,27 @@
             return crossings;
         };
 
-        var sortMoment = function (referenceMoment, currentMoment, sortRestrictions) {
+        /**
+         * Sorts the characters from the current moment such that the number of crossing
+         * with the reference moment is minimized
+         * The reordering is done respecting the sort restrictions
+         * Algorithm from: Methods for Visual Understanding of Hierarchical System Structures
+         * @param referenceMoment moment containing the characters considered as 'fixed'
+         * @param currentMoment moment containing the characters which will be reordered
+         * @param sortRestrictions defined the groups of characters which can be reordered
+         * @returns {{mapping: (*|Array), crossings: the}}
+         */
+        function sortMoment(referenceMoment, currentMoment, sortRestrictions) {
             var columnBarycenters = [];
+
+            // Define the identity permutations
             var currentMapping    = currentMoment.map(function (_, i, _) {
                 return i;
             });
             var backupMapping     = currentMoment.map(function (_, i, _) {
                 return i;
             });
+
             var matrix            = computeRealizationMatrix(referenceMoment, currentMoment);
 
             // Compute the column barycenters
@@ -634,7 +698,7 @@
             // Compute the number of crossings before sorting the columns
             var crossingsBefore = computeCrossings(matrix, referenceMoment, currentMoment);
 
-            // Sort the columns by their barycenters, while making sure that we respect the hierarchical structure
+            // Sort the columns by their barycenters, while making sure that we respect the sorting restrictions
             for (var restriction = 0, offset = 0; restriction < sortRestrictions.length; ++restriction) {
                 for (i = offset; i < offset + sortRestrictions[restriction]; ++i) {
                     for (var k = i + 1; k < offset + sortRestrictions[restriction]; ++k)
@@ -661,18 +725,30 @@
             // Compute the number of crossings after column sorting
             var crossingsAfter = computeCrossings(matrix, referenceMoment, currentMoment);
 
+            // Return the original permutation if the number of crossings did not decrease
             if (crossingsBefore <= crossingsAfter) {
                 return {mapping: backupMapping, crossings: crossingsBefore};
             }
 
             return {mapping: currentMapping, crossings: crossingsAfter};
-        };
+        }
 
-        console.log("Starting sweeping...");
-
+        // Store the best results so far
+        // (the datasets will be hard-copied)
         var bestCrossings = -1;
         var bestDataset   = jQuery.extend(true, {}, dataset);
 
+        // Perform sweeping
+        // Iterate repeatedly through the moments and try to change the order of the characters
+        // in order to minimize the number of crossings
+        //
+        // Steps:
+        //   Sweep left -> right
+        //     Sweep again to fix the order of the characters at each moment as the order in the last moment
+        //   Sweep right -> left
+        //     Sweep again to fix the order of the characters at each moment as the order in the last moment
+        //
+        // Between all these steps, check if an improvement was made and save it
         for (var iter = 0; iter < options.algorithm.sweepingMaxIterations; ++iter) {
             console.log("  Sweep #", iter);
             var totalCrossings = 0;
@@ -695,13 +771,13 @@
                 var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
                 totalCrossings += result.crossings;
 
-                enforceHierarchy(currentMoment, result.mapping, true);
+                optimizeMoment(currentMoment, result.mapping, true);
             }
 
             if (bestCrossings == -1 || bestCrossings >= totalCrossings) {
                 bestCrossings = totalCrossings;
                 bestDataset   = jQuery.extend(true, {}, dataset);
-                console.log("Best number of crossings: ", bestCrossings);
+//                console.log("Best number of crossings: ", bestCrossings);
             }
 
             totalCrossings = 0;
@@ -739,7 +815,7 @@
                     return i;
                 });
 
-                enforceHierarchy(dataset.d3.time[t], oneToOneMapping, false);
+                optimizeMoment(dataset.d3.time[t], oneToOneMapping, false);
 
                 var ref = dataset.d3.time[t - 1].sortedCharacters;
                 var cur = dataset.d3.time[t].sortedCharacters;
@@ -747,12 +823,10 @@
                 totalCrossings += computeCrossings(computeRealizationMatrix(ref, cur), ref, cur);
             }
 
-            // console.log("!!!", totalCrossings);
-
             if (bestCrossings == -1 || bestCrossings >= totalCrossings) {
                 bestCrossings = totalCrossings;
                 bestDataset   = jQuery.extend(true, {}, dataset);
-                console.log("Best number of crossings: ", bestCrossings);
+//                console.log("Best number of crossings: ", bestCrossings);
             }
 
             totalCrossings = 0;
@@ -775,13 +849,13 @@
                 var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
                 totalCrossings += result.crossings;
 
-                enforceHierarchy(currentMoment, result.mapping, true);
+                optimizeMoment(currentMoment, result.mapping, true);
             }
 
             if (bestCrossings == -1 || bestCrossings >= totalCrossings) {
                 bestCrossings = totalCrossings;
                 bestDataset   = jQuery.extend(true, {}, dataset);
-                console.log("Best number of crossings: ", bestCrossings);
+//                console.log("Best number of crossings: ", bestCrossings);
             }
 
             totalCrossings = 0;
@@ -819,7 +893,7 @@
                     return i;
                 });
 
-                enforceHierarchy(dataset.d3.time[t], oneToOneMapping, false);
+                optimizeMoment(dataset.d3.time[t], oneToOneMapping, false);
 
                 var ref = dataset.d3.time[t - 1].sortedCharacters;
                 var cur = dataset.d3.time[t].sortedCharacters;
@@ -830,10 +904,11 @@
             if (bestCrossings == -1 || bestCrossings >= totalCrossings) {
                 bestCrossings = totalCrossings;
                 bestDataset   = jQuery.extend(true, {}, dataset);
-                console.log("Best number of crossings: ", bestCrossings);
+//                console.log("Best number of crossings: ", bestCrossings);
             }
         }
 
+        // The dataset with the least number of crossings is returned
         return bestDataset;
     }
 </script>
