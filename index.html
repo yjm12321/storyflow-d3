@@ -127,12 +127,8 @@
 				.domain([0, maxCharacters])
 				.range([options.svg.topPadding, options.svg.height]);
 
-		// Compute the story timeframe
-		var timeframe = dataset.sessions.map(function(x) { return { start: x.start, end: x.end } })
-				.reduce(function(x, y) { return { start: Math.min(x.start, y.start), end: Math.max(x.end, y.end) } });
-
 		var horizontalScale = d3.scale.linear()
-				.domain([timeframe.start, timeframe.end])
+				.domain([0, dataset.d3.time.length])
 				.range([0, options.svg.width]);
 
 		// Compute path of each character
@@ -155,7 +151,9 @@
 				mean /= restriction;
 
 				for(i = 0; i < restriction; ++i) {
-					var character = dataset.characters[time.sortedCharacters[offset + i]];
+					var character = dataset.characters.filter(function(character) {
+						return character.id == time.sortedCharacters[offset + i];
+					})[0];
 
 					if(character.isRemoved)
 						continue;
@@ -185,7 +183,9 @@
 					
 					for(var h = 0; h < session.members.length; ++h) {
 						var characterId = session.members[h];
-						var character = dataset.characters[characterId];
+						var character = dataset.characters.filter(function(character) {
+							return character.id == characterId;
+						})[0];
 						
 						if(location.d3.points == undefined)
 							location.d3.points = [];
@@ -221,6 +221,10 @@
 				}
 			}
 		}
+
+		dataset.locations = dataset.locations.filter(function(location) {
+			return location.d3.points != undefined;
+		})
 
 		for(i = 0; i < dataset.locations.length; ++i) {
 			var location = dataset.locations[i];
@@ -278,11 +282,11 @@
 				.attr("fill", function(d) { return d.d3.color; })
 				.attr("opacity", 0.2);
 		}
-		
+
 		var locations = svg.selectAll("." + options.characters.locationClass).data(dataset.locations).attr("class", options.characters.locationClass);
 		setLocationAttributes(locations.transition().duration(options.characters.datasetTransitionDuration));
 		setLocationAttributes(locations.enter().append("path"));
-		
+
 		locations.exit().remove();
 			
 			var locationNames = svg.selectAll("." + options.characters.locationNameClass).data(dataset.locations).attr("class", options.characters.locationNameClass);
@@ -375,8 +379,6 @@
 		var timeframe = dataset.sessions.map(function(x) { return { start: x.start, end: x.end } })
 				.reduce(function(x, y) { return { start: Math.min(x.start, y.start), end: Math.max(x.end, y.end) } });
 
-		dataset.d3 = { time: [] };
-
 		if(options.characters.toKeep != null) {
 			dataset.characters.forEach(function(character) {
 				character.isRemoved = (options.characters.toKeep.indexOf(String(character.id)) == -1);
@@ -446,11 +448,13 @@
 			});
 		};
 
+		dataset.d3 = { time: [] };
+
 		console.log("Building the relationship trees...");
 
 		// Construct the relationship trees (one for each time unit)
 		for(var time = timeframe.start; time < timeframe.end; ++time) {
-			var moment = dataset.d3.time[time] = { locations: [ ], sortedCharacters: [ ] };
+			var moment  = { locations: [ ], sortedCharacters: [ ] };
 
 			// Append the sessions and the characters that belong to this moment
 			for(var i = 0; i < dataset.sessions.length; ++i) {
@@ -465,7 +469,13 @@
 				}
 			}
 
-			enforceHierarchy(moment, dataset.characters.map(function(_, i, _) { return i; }), false);
+			if(moment.locations.length != 0) {
+				dataset.d3.time.push(moment);
+
+				enforceHierarchy(moment, dataset.characters.map(function (_, i, _) {
+					return i;
+				}), false);
+			}
 
 			// TODO: Place the other locations such that the number of crossings is minimized
 		}
@@ -565,7 +575,7 @@
 			var totalCrossings = 0;
 
 			// Sweep left->right
-			for (t = timeframe.start + 1; t < timeframe.end; ++t) {
+			for (t = 1; t < dataset.d3.time.length; ++t) {
 				var referenceMoment = dataset.d3.time[t - 1];
 				var currentMoment = dataset.d3.time[t];
 
@@ -588,8 +598,8 @@
 			totalCrossings = 0;
 
 			// Set the order for all time frames as the order at the last time frame
-			referenceMoment = dataset.d3.time[timeframe.end -2];
-			currentMoment = dataset.d3.time[timeframe.end -1];
+			referenceMoment = dataset.d3.time[dataset.d3.time.length -2];
+			currentMoment = dataset.d3.time[dataset.d3.time.length -1];
 
 			// Sweep right->left to fix the order
 			var sortRestrictions = currentMoment.locations.
@@ -599,7 +609,7 @@
 
 			var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
 
-			for (t = timeframe.start + 1; t < timeframe.end; ++t) {
+			for (t = 1; t < dataset.d3.time.length; ++t) {
 				dataset.d3.time[t].sortedCharacters.sort(function(x, y) {
 					var xIndex = currentMoment.sortedCharacters.indexOf(x);
 					var yIndex = currentMoment.sortedCharacters.indexOf(x);
@@ -631,7 +641,7 @@
 			totalCrossings = 0;
 
 			// Sweep right->left
-			for (t = timeframe.end - 2; t >= 0; --t) {
+			for (t = dataset.d3.time.length - 2; t >= 0; --t) {
 				referenceMoment = dataset.d3.time[t  + 1];
 				currentMoment = dataset.d3.time[t];
 
@@ -665,7 +675,7 @@
 
 			var result = sortMoment(referenceMoment.sortedCharacters, currentMoment.sortedCharacters, sortRestrictions);
 
-			for (t = timeframe.start + 1; t < timeframe.end; ++t) {
+			for (t = 1; t < dataset.d3.time.length; ++t) {
 				dataset.d3.time[t].sortedCharacters.sort(function(x, y) {
 					var xIndex = currentMoment.sortedCharacters.indexOf(x);
 					var yIndex = currentMoment.sortedCharacters.indexOf(x);
