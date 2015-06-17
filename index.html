@@ -4,9 +4,11 @@
 	<meta charset="UTF-8">
 	<title>StoryFlow: Tracking the Evolution of Stories</title>
 	<link rel="stylesheet" type="text/css" href="lib/jquery-ui-themes-1.11.4/themes/flick/jquery-ui.min.css"/>
+	<link rel="stylesheet" type="text/css" href="lib/jquery.sumoselect/sumoselect.css"/>
 	<script type="text/javascript" src="lib/d3.v3.js"></script>
 	<script type="text/javascript" src="lib/jquery-ui-1.11.4/external/jquery/jquery.js"></script>
 	<script type="text/javascript" src="lib/jquery-ui-1.11.4/jquery-ui.min.js"></script>
+	<script type="text/javascript" src="lib/jquery.sumoselect/jquery.sumoselect.js"></script>
 </head>
 <body>
 <script type="text/javascript">
@@ -28,7 +30,8 @@
 			strokeWidth: 4,
 			highlightStrokeWidth: 8,
 			highlightDuration: 400,
-			nonHighlightedOpacity: 0.2
+			nonHighlightedOpacity: 0.2,
+			toKeep: null
 		},
 		algorithm: {
 			sweepingMaxIterations: 3
@@ -44,6 +47,19 @@
 					return console.error(error);
 
 				dataset = annotateDataset(json, options);
+
+				if(options.characters.toKeep == null) {
+					$('#characters').empty();
+					$('#characters')[0].sumo.reload();
+					options.characters.toKeep = dataset.characters.map(function(character) { return character.id });
+
+					dataset.characters.forEach(function (character) {
+						$("#characters")[0].sumo.add(character.id, character.name);
+					});
+
+					$("#characters")[0].sumo.selectAll();
+				}
+
 				drawStoryFlow(dataset, options);
 			});
 		};
@@ -53,6 +69,8 @@
 		datasetSelector.selectmenu({
 			width: 230,
 			select: function (event, ui) {
+				options.characters.toKeep = null;
+
 				buildDrawStoryFlow(ui.item.value, options);
 			}
 		});
@@ -64,6 +82,16 @@
 
 				drawStoryFlow(dataset, options);
 			}
+		});
+
+		$("#characters").SumoSelect({
+			placeholder: "Characters"
+		});
+
+		$("#characters").change(function() {
+			options.characters.toKeep = $("#characters").val();
+
+			buildDrawStoryFlow(datasetSelector.val(), options);
 		});
 
 		buildDrawStoryFlow(datasetSelector.val(), options);
@@ -117,6 +145,9 @@
 				for(i = 0; i < restriction; ++i) {
 					var character = dataset.characters[time.sortedCharacters[offset + i]];
 
+					if(character.isRemoved)
+						continue;
+
 					if(character.d3.points == undefined)
 						character.d3.points = [];
 
@@ -152,10 +183,19 @@
 
 		svg.on("click", function() {
 			dataset.characters.forEach(function(character) {
-				if(character.d3.isHighlighted)
+				if(!character.isRemoved && character.d3.isHighlighted)
 					toggleCharacterHighlight(character);
 			})
+		})
+
+		dataset.characters.forEach(function(character) {
+			if(character.isRemoved)
+				character.d3.points = [];
 		});
+
+//		dataset.characters = dataset.characters.filter(function(character) {
+//			return character.isRemoved == undefined || character.isRemoved == false;
+//		});
 
 		var line_function = d3.svg.line().interpolate(options.characters.interpolation)
 				.x(function (d) { return d.x; })
@@ -199,7 +239,7 @@
 					.attr("x", 0)
 					.attr("dy", 0)
 					.attr("xlink:href", function(d, i) { return "#" + i; })
-					.text(function(d) { return d.name; });
+					.text(function(d, i) { console.log(d, i); return d.name; });
 		}
 
 		setCharacterNamesAttributes(names.transition().duration(options.characters.datasetTransitionDuration));
@@ -215,6 +255,26 @@
 				.reduce(function(x, y) { return { start: Math.min(x.start, y.start), end: Math.max(x.end, y.end) } });
 
 		dataset.d3 = { time: [] };
+
+		if(options.characters.toKeep != null) {
+			dataset.characters.forEach(function(character) {
+				character.isRemoved = (options.characters.toKeep.indexOf(String(character.id)) == -1);
+			});
+
+//			dataset.characters = dataset.characters.filter(function (character) {
+//				return options.characters.toKeep.indexOf(String(character.id)) != -1;
+//			});
+
+			dataset.sessions.forEach(function(session) {
+				session.members = session.members.filter(function(member) {
+					return options.characters.toKeep.indexOf(String(member)) != -1;
+				})
+			});
+
+			dataset.sessions = dataset.sessions.filter(function(session) {
+				return session.members.length != 0;
+			})
+		}
 
 		var enforceHierarchy = function(moment, charactersMapping, performSorting) {
 			// Place the locations with the highest number of characters first
@@ -520,9 +580,9 @@
 	<tr>
 		<td>
 			<select name="dataset" id="dataset">
-				<option value="dataset/the_matrix.json">The Matrix</option>
+				<option value="dataset/the_matrix.json" selected>The Matrix</option>
 				<option value="dataset/alice_in_wonderland.json">Alice in Wonderland</option>
-				<option value="dataset/star_wars.json" selected>Star Wars</option>
+				<option value="dataset/star_wars.json">Star Wars</option>
 			</select>
 		</td>
 		<td>
@@ -536,6 +596,9 @@
 				<option value="cardinal">Cardinal</option>
 				<option value="monotone" selected>Monotone</option>
 			</select>
+		</td>
+		<td>
+			<select name="characters" id="characters" multiple="multiple"/>
 		</td>
 	</tr>
 </table>
