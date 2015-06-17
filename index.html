@@ -19,7 +19,8 @@
 		svg: {
 			element: "#canvas",
 			height: 1000,
-			width: 16000
+			width: 16000,
+			topPadding: 16
 		},
 		characters: {
 			interpolation: "monotone",
@@ -113,7 +114,7 @@
 		// Create various scales used to process the dataset
 		var verticalScale = d3.scale.linear()
 				.domain([0, maxCharacters])
-				.range([0, options.svg.height]);
+				.range([options.svg.topPadding, options.svg.height]);
 
 		// Compute the story timeframe
 		var timeframe = dataset.sessions.map(function(x) { return { start: x.start, end: x.end } })
