@@ -26,6 +26,7 @@
 			interpolation: "monotone",
 			lineClass: "line",
 			nameClass: "name",
+			locationClass: "location",
 			datasetTransitionDuration: 1000,
 			sessionCoefficient: 3,
 			strokeWidth: 4,
@@ -106,6 +107,11 @@
 		for(i = 0; i < dataset.characters.length; ++i) {
 			dataset.characters[i].d3 = { color: colors(i) };
 		}
+		
+		// Assign each character a color
+		for(i = 0; i < dataset.locations.length; ++i) {
+			dataset.locations[i].d3 = { color: colors(i) };
+		}
 
 		// Compute the maximum number of characters in a time unit
 		var maxCharacters = dataset.d3.time.map(function(time) { return time.sortedCharacters.length; })
@@ -159,6 +165,60 @@
 			});
 		}
 
+		for(var t = 0; t < dataset.d3.time.length; ++t) {
+			var time = dataset.d3.time[t];
+			
+			for(i = 0; i < time.locations.length; ++i) {
+				var sessions = time.locations[i].sessions;
+				
+				for(k = 0; k < sessions.length; ++k) {
+					var sessionId = sessions[k];
+					var session = dataset.sessions[sessionId];
+					
+					var locationId = session.location;
+					var location = dataset.locations[locationId];
+					
+					for(var h = 0; h < session.members.length; ++h) {
+						var characterId = session.members[h];
+						var character = dataset.characters[characterId];
+						
+						if(location.d3.points == undefined)
+							location.d3.points = [];
+						
+						for(var o = 0; o < character.d3.points.length; ++o) {
+							var characterPoint = character.d3.points[o];
+							
+							if(characterPoint.x != horizontalScale(t))
+								continue;
+							
+							if(location.d3.points.length == 0)
+								location.d3.points.push({
+										top: characterPoint,
+										bottom: characterPoint
+									});
+							else {
+								var lastPoint = location.d3.points[location.d3.points.length - 1];
+								if(lastPoint.top.x == characterPoint.x) {
+									if(lastPoint.top.y > characterPoint.y) {
+										location.d3.points[location.d3.points.length - 1].top = characterPoint;
+									} else if(lastPoint.bottom.y < characterPoint.y) {
+										location.d3.points[location.d3.points.length - 1].bottom = characterPoint;
+									}
+								} else {
+									location.d3.points.push({
+										top: characterPoint,
+										bottom: characterPoint
+									});
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		console.log(dataset.locations);
+		
 		function toggleCharacterHighlight(character) {
 			// Previously no characters were highlighted => fade all away
 			if(dataset.d3.charactersHighlighted == 0)
@@ -179,7 +239,32 @@
 						.style('opacity', 1.0)
 						.style('stroke-width', options.characters.strokeWidth);
 		}
+		console.log(dataset.d3.time[0]);
+		data = [{top:{x:10, y:10}, bottom:{x:10,y:20}}, {top:{x:15, y:20},bottom:{x:15,y:30}},{top:{x:30, y:10},bottom:{x:30,y:20}}];
+//		for(i = 1; i < 4; i++){
+//			data.push({ x : 10*i, y : 10*i});
+//		}
 
+		var area = d3.svg.area().interpolate(options.characters.interpolation)
+		.x(function(d) { return d.top.x; })
+			.y0(function(d) { return d.bottom.y})
+			.y1(function(d) { return d.top.y; });
+
+		function setLocationAttributes(locations){
+			return locations
+				.attr("class", options.characters.locationClass)
+				.attr("d", function(d) { return area(d.d3.points); })
+				.attr("fill", function(d) { return d.d3.color; })
+				.attr("opacity", 0.2);
+		}
+		
+		var locations = svg.selectAll("." + options.characters.locationClass).data(dataset.locations).attr("class", options.characters.locationClass);
+		setLocationAttributes(locations.transition().duration(options.characters.datasetTransitionDuration));
+		setLocationAttributes(locations.enter().append("path"));
+		
+		locations.exit().remove();
+			
+		
 		dataset.d3.charactersHighlighted = 0;
 
 		svg.on("click", function() {
@@ -203,7 +288,7 @@
 				.y(function (d) { return d.y; });
 
 		var lines = svg.selectAll("." + options.characters.lineClass).data(dataset.characters).attr("class", options.characters.lineClass);
-
+		
 		function setCharacterLinesAttributes(lines) {
 			return lines
 					.attr("class", options.characters.lineClass)
