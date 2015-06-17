@@ -2,4 +2,6 @@
 \BOOKMARK [0][-]{chapter.2}{Our Approach}{}% 2
 \BOOKMARK [0][-]{chapter.3}{Related Work}{}% 3
 \BOOKMARK [0][-]{chapter.4}{Implementation}{}% 4
-\BOOKMARK [0][-]{chapter.5}{Conclusion}{}% 5
+\BOOKMARK [1][-]{section.4.1}{Visualization}{chapter.4}% 5
+\BOOKMARK [1][-]{section.4.2}{Ordering algorithm}{chapter.4}% 6
+\BOOKMARK [0][-]{chapter.5}{Conclusion}{}% 7

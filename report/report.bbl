@@ -12,6 +12,12 @@ Narrative.
 Tanahashi's website.
 \newblock \url{http://vis.cs.ucdavis.edu/~tanahashi/storylines/}.
 
+\bibitem{4308636}
+Kozo Sugiyama, Shojiro Tagawa, and Mitsuhiko Toda.
+\newblock Methods for visual understanding of hierarchical system structures.
+\newblock {\em Systems, Man and Cybernetics, IEEE Transactions on},
+  11(2):109--125, Feb 1981.
+
 \bibitem{tanahashi}
 Y.~Tanahashi and Kwan-Liu Ma.
 \newblock Design considerations for optimizing storyline visualizations.
