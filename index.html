@@ -33,6 +33,7 @@
 			highlightStrokeWidth: 8,
 			highlightDuration: 400,
 			nonHighlightedOpacity: 0.2,
+			locationPadding: 10,
 			toKeep: null
 		},
 		algorithm: {
@@ -247,8 +248,8 @@
 
 		var area = d3.svg.area().interpolate(options.characters.interpolation)
 		.x(function(d) { return d.top.x; })
-			.y0(function(d) { return d.bottom.y})
-			.y1(function(d) { return d.top.y; });
+			.y0(function(d) { return d.bottom.y + options.characters.locationPadding})
+			.y1(function(d) { return d.top.y - options.characters.locationPadding });
 
 		function setLocationAttributes(locations){
 			return locations
