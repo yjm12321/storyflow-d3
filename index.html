@@ -204,7 +204,7 @@
                     if (character.d3.points == undefined)
                         character.d3.points = [];
 
-                    // Distribute it around the mean according to it's position in the session
+                    // Distribute it around the mean according to its position in the session
                     character.d3.points.push({
                         x: horizontalScale(t),
                         y: mean + ((verticalScale(offset + i) - mean) / options.characters.sessionCoefficient)

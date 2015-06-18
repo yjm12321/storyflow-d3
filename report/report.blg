@@ -6,45 +6,46 @@ Database file #1: bibliography.bib
 Warning--to sort, need author or key in Narrative
 Warning--to sort, need author or key in website:tanahashi
 Warning--to sort, need author or key in xkcd
-You've used 6 entries,
+Warning--to sort, need author or key in plotweaver
+You've used 7 entries,
             2118 wiz_defined-function locations,
-            530 strings with 4738 characters,
-and the built_in function-call counts, 1628 in all, are:
-= -- 153
-> -- 62
+            533 strings with 4796 characters,
+and the built_in function-call counts, 1787 in all, are:
+= -- 168
+> -- 63
 < -- 0
-+ -- 26
++ -- 27
 - -- 20
-* -- 116
-:= -- 250
-add.period$ -- 15
-call.type$ -- 6
-change.case$ -- 28
+* -- 121
+:= -- 267
+add.period$ -- 17
+call.type$ -- 7
+change.case$ -- 31
 chr.to.int$ -- 0
-cite$ -- 9
-duplicate$ -- 54
-empty$ -- 155
+cite$ -- 11
+duplicate$ -- 61
+empty$ -- 178
 format.name$ -- 20
-if$ -- 353
+if$ -- 393
 int.to.chr$ -- 0
-int.to.str$ -- 6
+int.to.str$ -- 7
 missing$ -- 3
-newline$ -- 30
+newline$ -- 34
 num.names$ -- 6
-pop$ -- 37
+pop$ -- 45
 preamble$ -- 1
-purify$ -- 22
+purify$ -- 24
 quote$ -- 0
-skip$ -- 46
+skip$ -- 54
 stack$ -- 0
-substring$ -- 105
-swap$ -- 6
+substring$ -- 110
+swap$ -- 7
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 24
-warning$ -- 3
+type$ -- 28
+warning$ -- 4
 while$ -- 9
-width$ -- 7
-write$ -- 56
-(There were 3 warnings)
+width$ -- 8
+write$ -- 63
+(There were 4 warnings)

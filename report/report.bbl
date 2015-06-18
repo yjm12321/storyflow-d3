@@ -8,6 +8,10 @@ Movie narrative chart.
 Narrative.
 \newblock \url{https://en.wikipedia.org/wiki/Narrative}.
 
+\bibitem{plotweaver}
+Plotweaver.
+\newblock url{http://ogievetsky.com/PlotWeaver/}.
+
 \bibitem{website:tanahashi}
 Tanahashi's website.
 \newblock \url{http://vis.cs.ucdavis.edu/~tanahashi/storylines/}.
